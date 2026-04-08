@@ -39,12 +39,11 @@ jobs:
         # Ex: "LogFacil.exe" para "LogFacil_1.1.9.exe" (De acordo com o formato do seu Updater)
         $VERSION = $TAG.TrimStart("v")
         Rename-Item -Path "dist/LogFacil.exe" -NewName "LogFacil_$VERSION.exe"
-        echo "NEW_EXE_NAME=LogFacil_$VERSION.exe" >> $env:GITHUB_ENV
 
     - name: Criar Release e Fazer Upload
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/${{ env.NEW_EXE_NAME }}
+        files: dist/LogFacil_*.exe
         name: LogFacil ${{ github.ref_name }}
         draft: false
         prerelease: false
