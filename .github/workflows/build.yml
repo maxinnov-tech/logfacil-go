@@ -1,0 +1,50 @@
+name: Build e Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Aciona apenas se você criar/enviar uma tag que comece com 'v', exemplo: 'v1.1.9'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Fazer Checkout do Código
+      uses: actions/checkout@v4
+
+    - name: Mapear Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # Versão recomendada para estabilidade com PyInstaller
+        cache: 'pip'
+
+    - name: Instalar Dependências
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Compilar o Executável (.exe)
+      run: |
+        pyinstaller --clean LogFacil.spec
+
+    - name: Renomear com a Versão da Tag
+      run: |
+        $TAG = "${{ github.ref_name }}"
+        # Substitui vírgulas e aspas por segurança e monta o novo nome. Retira a letra 'v' ou deixa como está.
+        # Ex: "LogFacil.exe" para "LogFacil_1.1.9.exe" (De acordo com o formato do seu Updater)
+        $VERSION = $TAG.TrimStart("v")
+        Rename-Item -Path "dist/LogFacil.exe" -NewName "LogFacil_$VERSION.exe"
+        echo "NEW_EXE_NAME=LogFacil_$VERSION.exe" >> $env:GITHUB_ENV
+
+    - name: Criar Release e Fazer Upload
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/${{ env.NEW_EXE_NAME }}
+        name: LogFacil ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
