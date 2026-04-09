@@ -1,3 +1,13 @@
+"""
+Arquivo: core/utils.py
+Descrição: Funções utilitárias e ajudantes gerais.
+Este módulo contém diversas funções auxiliares que dão suporte genérico
+a outras áreas da aplicação. Aqui encontram-se ferramentas para:
+- Extrair o nome de um serviço baseado no caminho de pastas de um arquivo (service_from_path).
+- Abrir arquivos textos identificando automaticamente a melhor codificação ("encoding") apropriada e usando fallback para binário.
+- Mover o cursor de leitura rápida para o final de um arquivo gigantesco (seek_tail) para não congestionar a memória lendo logs inteiros antigos.
+- Varrer recursivamente diretórios e achar os arquivos de log mais recentes de cada serviço.
+"""
 import os
 from typing import Dict, Tuple
 

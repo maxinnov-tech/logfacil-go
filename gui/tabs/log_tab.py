@@ -1,3 +1,14 @@
+"""
+Arquivo: gui/tabs/log_tab.py
+Descrição: Guia (Tab) individual responsável pela renderização visual de um arquivo log.
+Este é um dos arquivos mais ricos da aplicação, pois manipula a área de texto onde 
+os fluxos de dados de saída (tails) são recebidos e desenhados. Sua estrutura engloba 
+uma fila em thread (queue) consumindo os outputs dos monitores do backend. Desempenha forte lógica
+focada em performance de Tcl/Tk controlando quantas linhas inserir na UI de uma vez, 
+gerenciando um limite explícito de logs mostrados em buffer (para evitar estourar a memória RAM 
+com o uso contínuo) e a funcionalidade interativa de travar em uma linha congelando (Pause / Folow).
+Também exibe controles para ação focada em um serviço único, como de "Restart do serviço".
+"""
 import os
 import time
 import queue

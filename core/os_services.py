@@ -1,3 +1,14 @@
+"""
+Arquivo: core/os_services.py
+Descrição: Módulo de integração operacional do sistema.
+Este arquivo isola toda a comunicação de baixo nível da aplicação com o Sistema Operacional
+(especialmente o Windows). Ele oferece funções utilitárias críticas, tais como:
+- Checar se a aplicação está rodando como Administrador e solicitar elevação de privilégios via UAC.
+- Iniciar (start) e parar (stop) Serviços do Windows de forma oculta (sem abrir janelas de terminal "cmd" para o usuário).
+- Matar processos com falhas (via taskkill).
+- Checar o status atual (Rodando, Parado) de Serviços no computador local.
+- Executar e coordenar o ciclo completo e ordenado de reinício de uma stack de serviço.
+"""
 import sys
 import os
 import subprocess

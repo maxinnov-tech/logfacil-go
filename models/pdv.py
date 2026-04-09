@@ -1,3 +1,12 @@
+"""
+Arquivo: models/pdv.py
+Descrição: Estrutura de Modelos de Dados (Data Models) para representar informações de PDVs.
+Este arquivo define as classes em formato Dataclasses ('PDVInfo' e 'LogPDVActivity')
+que mapeiam os atributos recebidos tanto do parser de Logs quanto das APIs. Ele facilita a 
+passagem orientada a objetos (POO) entre os componentes internos, tipando claramente
+os atributos como Código, ID Interno, Nome, Operacionalidade, versão de APP e última atividade
+de um PDV de pagamento. Também formata traduções legíveis para seus diversos status.
+"""
 from dataclasses import dataclass
 from typing import Optional
 

@@ -1,4 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
+#
+# Arquivo: LogFacil.spec
+# Descrição: Arquivo de especificação para compilação (build) com PyInstaller.
+# Contém as configurações essenciais (hiddenimports, opções uac_admin, etc) para gerar 
+# o executável nativo Windows da aplicação.
+
 
 block_cipher = None
 

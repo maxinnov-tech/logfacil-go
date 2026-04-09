@@ -1,3 +1,8 @@
+# Arquivo: .github/workflows/build.yml
+# Descrição: Definição da pipeline de Integração e Deploy Contínuo (CI/CD) no GitHub Actions.
+# Orquestra as etapas de compilação automática: inicializa servidor de build no Windows, 
+# instala Python e os requirements listados, gera dinamicamente o arquivo Exe usando o 
+# PyInstaller com a versão especificada na Tag do Git e cria a Release automaticamente.
 name: Build e Release
 
 permissions:

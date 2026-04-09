@@ -1,8 +1,16 @@
+"""
+Arquivo: core/github_updater.py
+Descrição: Gerenciador de download e verificação de atualizações no GitHub.
+Este arquivo contém a classe GitHubUpdater que checa se existe uma nova versão
+disponível do LogFácil diretamente do repositório no GitHub. Ele possui a lógica
+para verificar atualizações comparando as versões via um arquivo JSON específico
+ou consultando as Releases oficiais (via API do GitHub). Além disso, a classe é
+responsável por realizar o download seguro do novo executável para um diretório
+temporário e reportar o progresso do download para a interface da aplicação.
+"""
 import os
-import json
 import tempfile
-import urllib.request
-import urllib.error
+import requests
 from typing import Optional, Tuple
 
 from core.logger import logger
@@ -23,57 +31,52 @@ class GitHubUpdater:
     def check_for_updates(self) -> Tuple[bool, str, Optional[str]]:
         """Verifica se há atualizações disponíveis."""
         logger.info(f"Verificando atualizações: Repo={self.repo}, Versão Atual={self.current_version}")
+        headers = {'User-Agent': 'LogFacil-Updater/1.0'}
         
         # Método 1: version.json
         try:
             version_url = f"{self.raw_url}/version.json"
-            req = urllib.request.Request(version_url)
-            req.add_header('User-Agent', 'LogFacil-Updater/1.0')
-            
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode('utf-8'))
-            
-            latest = data.get('version', '')
-            download_url = data.get('download_url', '')
-            self.release_notes = data.get('notes', '')
-            
-            if latest and self._is_newer(latest, self.current_version):
-                self.latest_version = latest
-                self.download_url = download_url
-                logger.info(f"Nova versão encontrada via json: {latest}")
-                return True, latest, download_url
+            response = requests.get(version_url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                latest = data.get('version', '')
+                download_url = data.get('download_url', '')
+                self.release_notes = data.get('notes', '')
+                
+                if latest and self._is_newer(latest, self.current_version):
+                    self.latest_version = latest
+                    self.download_url = download_url
+                    logger.info(f"Nova versão encontrada via json: {latest}")
+                    return True, latest, download_url
         except Exception as e:
-            logger.debug(f"version.json não encontrado ou inválido: {e}")
+            logger.debug(f"version.json não encontrado ou erro na requisição: {e}")
         
         # Método 2: GitHub Releases
         try:
             releases_url = f"{self.api_url}/releases/latest"
-            req = urllib.request.Request(releases_url)
-            req.add_header('Accept', 'application/vnd.github.v3+json')
-            req.add_header('User-Agent', 'LogFacil-Updater/1.0')
+            headers['Accept'] = 'application/vnd.github.v3+json'
             
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode('utf-8'))
-            
-            latest = data.get('tag_name', '').lstrip('v')
-            self.release_notes = data.get('body', '')
-            
-            assets = data.get('assets', [])
-            for asset in assets:
-                name = asset.get('name', '').lower()
-                if name.endswith('.exe'):
-                    self.download_url = asset.get('browser_download_url')
-                    break
-            
-            if latest and self._is_newer(latest, self.current_version):
-                self.latest_version = latest
-                logger.info(f"Nova versão encontrada via GitHub Releases: {latest}")
-                return True, latest, self.download_url
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
+            response = requests.get(releases_url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                latest = data.get('tag_name', '').lstrip('v')
+                self.release_notes = data.get('body', '')
+                
+                assets = data.get('assets', [])
+                for asset in assets:
+                    name = asset.get('name', '').lower()
+                    if name.endswith('.exe'):
+                        self.download_url = asset.get('browser_download_url')
+                        break
+                
+                if latest and self._is_newer(latest, self.current_version):
+                    self.latest_version = latest
+                    logger.info(f"Nova versão encontrada via GitHub Releases: {latest}")
+                    return True, latest, self.download_url
+            elif response.status_code == 404:
                 logger.debug("Nenhuma release encontrada")
             else:
-                logger.error(f"Erro HTTP ao verificar atualizações: {e.code}")
+                logger.error(f"Erro HTTP ao verificar atualizações: {response.status_code}")
         except Exception as e:
             logger.error(f"Erro ao verificar atualizações: {e}")
         
@@ -106,11 +109,12 @@ class GitHubUpdater:
             return latest != current
     
     def download_update(self, progress_callback=None) -> Optional[str]:
-        """Baixa a atualização."""
+        """Baixa a atualização com robustez usando requests."""
         if not self.download_url:
             logger.error("URL de download não definida!")
             return None
         
+        filepath = None
         try:
             temp_dir = tempfile.gettempdir()
             update_dir = os.path.join(temp_dir, "LogFacil_Update")
@@ -119,35 +123,46 @@ class GitHubUpdater:
             filename = f"LogFacil_{self.latest_version}.exe"
             filepath = os.path.join(update_dir, filename)
             
-            req = urllib.request.Request(self.download_url)
-            req.add_header('User-Agent', 'LogFacil-Updater/1.0')
+            headers = {'User-Agent': 'LogFacil-Updater/1.0'}
+            response = requests.get(self.download_url, headers=headers, stream=True, timeout=30)
+            response.raise_for_status()
             
-            with urllib.request.urlopen(req, timeout=120) as response:
-                total_size = int(response.headers.get('content-length', 0))
-                downloaded = 0
-                
-                with open(filepath, 'wb') as f:
-                    while True:
-                        chunk = response.read(8192)
-                        if not chunk:
-                            break
+            # Pega o tamanho de forma segura (se não existir, fica 0)
+            content_length = response.headers.get('content-length')
+            total_size = int(content_length) if content_length and content_length.isdigit() else 0
+            
+            downloaded = 0
+            
+            with open(filepath, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk: # Filtra chunks keep-alive
                         f.write(chunk)
                         downloaded += len(chunk)
                         
                         if progress_callback and total_size > 0:
                             percent = int((downloaded / total_size) * 100)
                             progress_callback(percent, downloaded, total_size)
+                        elif progress_callback and total_size == 0:
+                            progress_callback(50, downloaded, downloaded) # Progresso indeterminado mas rodando
             
-            # Verificar se o arquivo tem tamanho mínimo (pelo menos 5 MB para um executável)
+            # Para requests onde content-length não veio
+            if progress_callback and total_size == 0 and downloaded > 0:
+                 progress_callback(100, downloaded, downloaded)
+            
+            # Verificar se o arquivo tem tamanho razoável (pelo menos 3 MB)
             file_size = os.path.getsize(filepath)
-            if file_size < 5 * 1024 * 1024:
-                logger.error(f"Arquivo baixado muito pequeno ({file_size} bytes)")
-                os.remove(filepath)
+            if file_size < 3 * 1024 * 1024:
+                logger.error(f"Arquivo baixado muito pequeno ({file_size} bytes). Possível bloqueio corporativo ou firewal.")
+                try: os.remove(filepath) 
+                except: pass
                 return None
             
-            logger.info(f"Download concluído: {filepath}")
+            logger.info(f"Download concluído com sucesso: {filepath}")
             return filepath
             
         except Exception as e:
-            logger.error(f"Erro no download: {e}")
+            logger.error(f"Erro pesado no download: {e}")
+            if filepath and os.path.exists(filepath):
+                try: os.remove(filepath)
+                except: pass
             return None

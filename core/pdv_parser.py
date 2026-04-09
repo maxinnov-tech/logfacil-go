@@ -1,3 +1,13 @@
+"""
+Arquivo: core/pdv_parser.py
+Descrição: Processador e extrator de informações de PDVs a partir de arquivos de log.
+Este arquivo concentra toda a lógica de negócio responsável por ler nativamente os
+arquivos de log (especialmente do serviço webPostoPayServer) em busca de atividades
+e detalhes dos PDVs (Ponto de Venda). Ele usa expressões regulares (Regex) para varrer
+os logs extraindo IDQ, nome, versão, IP e última atividade de cada PDV contido ali.
+Além disso, ele cruza os dados encontrados na leitura textual dos Logs com os
+dados oficiais da API do concentrador (webPostoLocal), criando um relatório consolidado.
+"""
 import re
 import os
 import xml.etree.ElementTree as ET

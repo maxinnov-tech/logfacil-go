@@ -1,3 +1,12 @@
+"""
+Arquivo: gui/managers/update_manager.py
+Descrição: Controlador Intermediário (Manager) do ciclo de vida de Atualizações.
+Neste arquivo encontramos a lógica gerencial que orquestra as checagens com o 
+Updater (core/github_updater.py) atuando no ambiente gráfico. Ele define e diferencia
+checagens silenciosas de background (geralmente invocadas na abertura da Home da app)
+versus as checagens ativas solicitadas manualmente pelos usuários na aba "Settings",
+impedindo avisos redundantes ou pop-ups bloqueantes ao longo da atividade de monitoração normal.
+"""
 import sys
 import threading
 from tkinter import messagebox

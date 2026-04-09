@@ -1,3 +1,13 @@
+"""
+Arquivo: main.py
+Descrição: Ponto de entrada (entry point) da aplicação LogFácil.
+Este arquivo é responsável por iniciar a aplicação, garantindo que o programa 
+tenha os privilégios de administrador necessários (no ambiente Windows) para
+gerenciar processos e serviços de sistema. Caso os privilégios não estejam
+presentes, ele exibe uma caixa de diálogo solicitando reinicialização com elevação de privilégios.
+Uma vez com as permissões corretas (ou caso o usuário opte por continuar sem elas),
+ele inicializa e executa a interface gráfica (GUI) principal (App).
+"""
 import os
 from tkinter import messagebox
 

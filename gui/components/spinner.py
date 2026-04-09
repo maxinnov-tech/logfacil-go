@@ -1,3 +1,12 @@
+"""
+Arquivo: gui/components/spinner.py
+Descrição: Componente visual de Spinner de carregamento (Loading Spinner).
+Este arquivo centraliza a criação e animação de um componente flutuante (overlay) "Loading"
+em CustomTkinter. Ele possui laços de auto-atualização para rotacionar caracteres de carregamento
+("◐", "◓", "◑", "◒") e exibir texto pontilhado ("...", etc) que transmitem ao usuário
+a noção visual de que uma tarefa lenta assíncrona está rodando em segundo plano
+(ex: reiniciar dezenas de serviços ou escaneamento de arquivos densos).
+"""
 import customtkinter as ctk
 
 class LoadingSpinner:

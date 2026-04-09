@@ -1,3 +1,12 @@
+"""
+Arquivo: gui/components/search.py
+Descrição: Componente GUI de barra de pesquisa customizada e incremental.
+Este módulo incorpora a lógica e interface visual para um campo de busca que é ejetado
+como pop-up dentro das telas (textboxes) do sistema de Log. Ele realiza não apenas
+a localização dos termos nas vastas linhas das abas de logs, como também provê recurso
+de "Match Next / Match Prev", grifo visual das cores (Highlight) com rolagem inteligente,
+além das chaves Case Sensitivity, garantindo excelente usabilidade para varreduras longas.
+"""
 import tkinter as tk
 import customtkinter as ctk
 

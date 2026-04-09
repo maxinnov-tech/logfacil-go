@@ -1,3 +1,12 @@
+"""
+Arquivo: core/logger.py
+Descrição: Configuração global para registro (logging) de eventos da aplicação.
+Este arquivo define um logger configurado para gravar eventos de erro, alertas e informações
+importantes do sistema em arquivos de texto rotativos e também de exibi-los no console.
+Os logs do próprio LogFácil são armazenados em um subdiretório na pasta temporária do sistema
+(ex. C:\\temp\\LogFacil) e seguem um controle de tamanho máximo, guardando o histórico das
+últimas execuções. Isso é crucial para diagnóstico e rastreabilidade de falhas internas da ferramenta.
+"""
 import os
 import logging
 from logging.handlers import RotatingFileHandler

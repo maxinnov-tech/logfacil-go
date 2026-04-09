@@ -1,3 +1,14 @@
+"""
+Arquivo: gui/dialogs/update_dialog.py
+Descrição: Janela (Toplevel) customizada para exibir o diálogo de atualização do sistema.
+Este script controla completamente o fluxo gráfico apresentado ao usuário quando uma
+atualização é identificada. Ele exibe detalhes como Release Notes (Notas de atualização),
+mostra uma barra de progresso gráfica iterando o percentual de bytes baixados 
+e invoca a lógica de reescrita em disco do novo executável recém baixado. 
+Inclui um script BAT simples formatado apropriadamente para ser ejetado na pasta temp do Windows
+capaz de matar o próprio LogFácil original de forma limpa, substituí-lo na pasta,
+lidar com eventuais desbloqueios de execução do sistema base usando o powershell e se auto apagar.
+"""
 import os
 import sys
 import threading
@@ -142,7 +153,7 @@ class UpdateDialog(ctk.CTkToplevel):
         self.btn_cancelar.configure(text="Fechar")
     
     def _download_erro(self):
-        self.lbl_status.configure(text="❌ Erro no download. Verifique sua conexão.")
+        self.lbl_status.configure(text="❌ Erro no download. Verifique sua conexão ou Firewall.")
         self.btn_acao.configure(text="⬇️ Tentar Novamente", command=self._baixar, state="normal")
     
     def _instalar(self):
@@ -159,103 +170,60 @@ class UpdateDialog(ctk.CTkToplevel):
         )
         
         if resposta:
-            updater_script = self._criar_script_python(app_path)
+            updater_script = self._criar_script_bat(app_path)
             if updater_script:
                 try:
                     subprocess.Popen(
-                        [sys.executable, updater_script],
-                        creationflags=subprocess.DETACHED_PROCESS if os.name == 'nt' else 0,
-                        close_fds=True
+                        ['cmd.exe', '/C', updater_script],
+                        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
                     )
                     self.parent.quit()
                 except Exception as e:
                     messagebox.showerror("Erro", f"Falha ao iniciar atualização: {e}")
 
-    def _criar_script_python(self, app_path):
-        """Cria um script Python temporário para substituir o executável."""
+    def _criar_script_bat(self, app_path):
+        """Cria um script BAT temporário extremamente leve para substituir o executável no Windows."""
         try:
             import tempfile
             
-            script_content = f'''import os
-import sys
-import time
-import shutil
-import subprocess
+            nome_exe = os.path.basename(app_path)
+            
+            bat_content = f'''@echo off
+echo Atualizando o LogFacil... 
+timeout /t 3 /nobreak > NUL
 
-def main():
-    app_path = r"{app_path}"
-    new_file = r"{self.downloaded_file}"
-    app_dir = os.path.dirname(app_path)
-    
-    # Aguardar o processo principal fechar
-    time.sleep(3)
-    
-    # Forçar encerramento se ainda estiver rodando
-    app_name = os.path.basename(app_path)
-    try:
-        subprocess.run(["taskkill", "/F", "/IM", app_name], capture_output=True, timeout=5)
-    except:
-        pass
-    
-    # Desbloquear arquivo baixado (caso venha da internet)
-    try:
-        subprocess.run(["powershell", "-Command", f"Unblock-File -Path '{{new_file}}'"], 
-                       capture_output=True, timeout=10)
-    except:
-        pass
-    
-    # Fazer backup
-    backup_path = app_path + ".backup"
-    if os.path.exists(app_path):
-        try:
-            shutil.move(app_path, backup_path)
-        except Exception as e:
-            print(f"Erro ao renomear: {{e}}")
-            return
-    
-    # Copiar novo executável
-    try:
-        shutil.copy2(new_file, app_path)
-    except Exception as e:
-        print(f"Erro ao copiar: {{e}}")
-        # Restaurar backup
-        if os.path.exists(backup_path):
-            shutil.move(backup_path, app_path)
-        return
-    
-    # Remover backup e arquivo baixado
-    try:
-        if os.path.exists(backup_path):
-            os.remove(backup_path)
-        if os.path.exists(new_file):
-            os.remove(new_file)
-    except:
-        pass
-    
-    # Iniciar nova versão usando os.startfile (mais confiável que subprocess)
-    try:
-        os.startfile(app_path)
-    except:
-        # Fallback
-        subprocess.Popen([app_path], cwd=app_dir)
-    
-    # Remover este script
-    try:
-        os.remove(__file__)
-    except:
-        pass
+:: Tenta forcar encerramento caso ainda esteja rodando
+taskkill /F /IM "{nome_exe}" > NUL 2>&1
 
-if __name__ == "__main__":
-    main()
+:: Desbloqueia o arquivo (Remove flag de Web do Windows)
+powershell -Command "Unblock-File -Path '{self.downloaded_file}'" > NUL 2>&1
+
+:: Deletar backup antigo se existir
+if exist "{app_path}.bak" del /F /Q "{app_path}.bak" > NUL 2>&1
+
+:: Renomear atual para backup
+if exist "{app_path}" ren "{app_path}" "{nome_exe}.bak" > NUL 2>&1
+
+:: Copiar o novo arquivo baixado
+copy /Y "{self.downloaded_file}" "{app_path}" > NUL
+
+:: Deletar arquivo temporario baixado da pasta Update
+del /F /Q "{self.downloaded_file}" > NUL 2>&1
+
+:: Inicia o novo aplicativo
+start "" "{app_path}"
+
+:: Se auto deletar
+del /F /Q "%~f0"
 '''
             # Salvar script temporário
-            script_path = os.path.join(tempfile.gettempdir(), f"logfacil_updater_{os.getpid()}.py")
+            script_path = os.path.join(tempfile.gettempdir(), f"logfacil_updater_{os.getpid()}.bat")
             with open(script_path, 'w', encoding='utf-8') as f:
-                f.write(script_content)
+                f.write(bat_content)
             
             return script_path
         except Exception as e:
-            print(f"Erro ao criar script Python: {e}")
+            print(f"Erro ao criar script BAT: {e}")
             return None    
     
     def cancelar(self):

@@ -1,3 +1,12 @@
+"""
+Arquivo: gui/tabs/pdv_tab.py
+Descrição: Guia (Tab) de monitoria e histórico dedicada ao controle ativo de Pontos de Venda (PDV).
+Diferencia-se da Log Tab visual, pois não injeta textos cruéis de debug. Em vez disso,
+processa e modela visualmente os relatórios analíticos extraídos de cada terminal PDV da rede.
+Utiliza tabelas de árvores (Treeview ttk) exibindo horário exato, identificadores e o Status (Ativo/Inativo) de cada maquininha.
+Comporta o laço de execução persistente (daemon thread) que periodicamente atualiza os status das APIs
+com as descobertas feitas no Parser, fornecendo a feature popular de "salvar histórico CSV exportado".
+"""
 import threading
 import datetime
 from tkinter import ttk, filedialog, messagebox

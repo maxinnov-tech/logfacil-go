@@ -1,3 +1,13 @@
+"""
+Arquivo: gui/app.py
+Descrição: Classe Principal da Interface Gráfica (GUI) do LogFácil.
+Este é o coração visual da aplicação. Ele orquestra os componentes da aba (Notebooks),
+layout geral, barra superior, rodapé, e menu de controles.
+É nesse arquivo que fica hospedada a Thread observadora (FolderWatcher), encarregada
+de constantemente verificar alterações no diretório raiz do LOG e injetar novos
+arquivos visualizáveis perfeitamente em suas próprias abas de sistema utilizando filas.
+Ele amarra a interação entre módulos Visuais e Funcionais essenciais da plataforma.
+"""
 import os
 import time
 import threading
