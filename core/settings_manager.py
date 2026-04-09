@@ -13,8 +13,14 @@ class SettingsManager:
     """Gerencia as configurações do usuário em um arquivo JSON."""
     
     def __init__(self, filename="settings.json"):
-        # Localiza o arquivo na mesma pasta do executável/script (portabilidade)
-        self.filepath = os.path.join(os.getcwd(), filename)
+        # Localiza o arquivo na pasta AppData/LogFacil (padrão profissional Windows)
+        appdata = os.getenv("APPDATA") or os.path.expanduser("~")
+        self.base_dir = os.path.join(appdata, "LogFacil")
+        self.filepath = os.path.join(self.base_dir, filename)
+        
+        # Garante que o diretório existe
+        os.makedirs(self.base_dir, exist_ok=True)
+        
         self.settings = self._get_default_settings()
         self.load()
 
