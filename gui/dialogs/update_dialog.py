@@ -213,6 +213,9 @@ del /F /Q "{self.downloaded_file}" > NUL 2>&1
 :: Inicia o novo aplicativo
 start "" "{app_path}"
 
+:: Tenta deletar o backup agora (pode falhar se o Windows travar por uns segundos, mas limpamos no proximo update tbm)
+if exist "{app_path}.bak" del /F /Q "{app_path}.bak" > NUL 2>&1
+
 :: Se auto deletar
 del /F /Q "%~f0"
 '''
