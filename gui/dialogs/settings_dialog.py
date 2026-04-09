@@ -10,10 +10,10 @@ import customtkinter as ctk
 class SettingsDialog(ctk.CTkToplevel):
     """Diálogo de configurações do sistema."""
     
-    def __init__(self, parent, settings_manager):
+    def __init__(self, parent, app):
         super().__init__(parent)
-        self.parent = parent
-        self.settings = settings_manager
+        self.app = app
+        self.settings = app.settings
         
         self.title("⚙️ Configurações - LogFácil")
         self.geometry("450x350")
@@ -78,7 +78,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.settings.set("font_size", new_font)
         
         # Aplica na aplicação principal se o método existir
-        if hasattr(self.parent, 'apply_settings'):
-            self.parent.apply_settings()
+        if hasattr(self.app, 'apply_settings'):
+            self.app.apply_settings()
             
         self.destroy()
