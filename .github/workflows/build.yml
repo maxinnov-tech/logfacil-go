@@ -37,18 +37,10 @@ jobs:
       run: |
         pyinstaller --clean LogFacil.spec
 
-    - name: Renomear com a Versão da Tag
-      run: |
-        $TAG = "${{ github.ref_name }}"
-        # Substitui vírgulas e aspas por segurança e monta o novo nome. Retira a letra 'v' ou deixa como está.
-        # Ex: "LogFacil.exe" para "LogFacil_1.1.9.exe" (De acordo com o formato do seu Updater)
-        $VERSION = $TAG.TrimStart("v")
-        Rename-Item -Path "dist/LogFacil.exe" -NewName "LogFacil_$VERSION.exe"
-
     - name: Criar Release e Fazer Upload
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/LogFacil_*.exe
+        files: dist/LogFacil.exe
         name: LogFacil ${{ github.ref_name }}
         draft: false
         prerelease: false

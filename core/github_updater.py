@@ -120,7 +120,7 @@ class GitHubUpdater:
             update_dir = os.path.join(temp_dir, "LogFacil_Update")
             os.makedirs(update_dir, exist_ok=True)
             
-            filename = f"LogFacil_{self.latest_version}.exe"
+            filename = "LogFacil.exe"
             filepath = os.path.join(update_dir, filename)
             
             headers = {'User-Agent': 'LogFacil-Updater/1.0'}
