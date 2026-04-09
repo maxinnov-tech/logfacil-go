@@ -16,19 +16,25 @@ class SettingsDialog(ctk.CTkToplevel):
         self.settings = app.settings
         
         self.title("⚙️ Configurações - LogFácil")
-        self.geometry("450x350")
         self.resizable(False, False)
         
-        # Centraliza a janela
-        self.update_idletasks()
-        x = (self.winfo_screenwidth() // 2) - (450 // 2)
-        y = (self.winfo_screenheight() // 2) - (350 // 2)
-        self.geometry(f"+{x}+{y}")
-        
+        # Build UI first
         self._build_ui()
+        
+        # Force redraw before showing/grabbing
+        self.update()
+        
+        # Now calculate geometry and center
+        w, h = 450, 350
+        x = (self.winfo_screenwidth() // 2) - (w // 2)
+        y = (self.winfo_screenheight() // 2) - (h // 2)
+        self.geometry(f"{w}x{h}+{x}+{y}")
+        
         self.lift()
         self.focus_force()
-        self.grab_set()
+        
+        # Use after to ensure everything is mapped before grabbing focus
+        self.after(100, self.grab_set)
 
     def _build_ui(self):
         main = ctk.CTkFrame(self, fg_color="transparent")

@@ -139,7 +139,7 @@ GitHub: https://github.com/{GITHUB_REPO}
         messagebox.showinfo("Sobre o LogFácil", about_text.strip())
     
     def _open_settings(self):
-        SettingsDialog(self.root, self)
+        self._settings_window = SettingsDialog(self.root, self)
 
     def apply_settings(self):
         """Aplica as configurações atuais em toda a aplicação."""
@@ -344,7 +344,7 @@ GitHub: https://github.com/{GITHUB_REPO}
                 t.stop_event.set()
         self.root.destroy()
         logger.info("Aplicação encerrada")
-        sys.exit(0)
+        os._exit(0)
     
     def run(self):
         self.root.mainloop()
