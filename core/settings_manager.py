@@ -29,7 +29,10 @@ class SettingsManager:
         return {
             "font_size": 13,
             "appearance_mode": "dark",
-            "ui_theme": "blue"
+            "ui_theme": "blue",
+            "last_folder": "",
+            "max_view_lines": 1000,
+            "scan_interval": 2.0
         }
 
     def load(self):

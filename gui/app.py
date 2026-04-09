@@ -1,12 +1,9 @@
 """
 Arquivo: gui/app.py
-Descrição: Classe Principal da Interface Gráfica (GUI) do LogFácil.
-Este é o coração visual da aplicação. Ele orquestra os componentes da aba (Notebooks),
-layout geral, barra superior, rodapé, e menu de controles.
-É nesse arquivo que fica hospedada a Thread observadora (FolderWatcher), encarregada
-de constantemente verificar alterações no diretório raiz do LOG e injetar novos
-arquivos visualizáveis perfeitamente em suas próprias abas de sistema utilizando filas.
-Ele amarra a interação entre módulos Visuais e Funcionais essenciais da plataforma.
+Descrição: Classe Principal (Shell) do LogFácil Pro v2.
+Orquestra o layout moderno com barra lateral, navegação entre seções
+e integração via Barramento de Eventos. Gerencia o ciclo de vida global
+da aplicação, incluindo monitoramento de pastas e atualizações.
 """
 import os
 import time
@@ -21,11 +18,16 @@ from core.logger import logger
 from core.config import VERSION, DEFAULT_ROOT, CURRENT_VERSION, GITHUB_REPO, SCAN_INTERVAL_SEC
 from core.os_services import restart_service_components
 from core.utils import service_from_path, find_latest_by_service
+from core.event_bus import event_bus
+from core.settings_manager import SettingsManager
+
 from gui.managers.update_manager import AutoUpdateManager
+from gui.components.navigation import Sidebar
+from gui.tabs.dashboard_tab import DashboardTab
 from gui.tabs.log_tab import LogTab
 from gui.tabs.pdv_tab import PDVMonitorTab
 from gui.tabs.settings_tab import SettingsTab
-from core.settings_manager import SettingsManager
+from gui.managers.global_search import GlobalSearch
 
 class FolderWatcher(threading.Thread):
     def __init__(self, app: "App", root_dir: str):
@@ -61,294 +63,217 @@ class FolderWatcher(threading.Thread):
 class App:
     def __init__(self):
         logger.info("="*50)
-        logger.info(f"Iniciando LogFácil v{VERSION}")
+        logger.info(f"Iniciando LogFácil Pro v{VERSION}")
         logger.info("="*50)
         
         self.settings = SettingsManager()
-        self._setup_window()
-        self._build_topbar()
-        self._setup_notebook()
-        self._setup_queues()
-        self._start_watcher()
-        self._setup_footer()
-        self._setup_close_handler()
-        self._setup_pdv_monitor_tab()
-        self._setup_settings_tab()
+        self.open_tabs = {}
+        self.tab_by_service = {}
+        self.views = {}
         
+        self._setup_window()
+        self._setup_layout()
+        self._setup_queues()
+        self._setup_close_handler()
+        
+        # Inicia componentes globais
         self.update_manager = AutoUpdateManager(self)
         self.root.after(3000, self.update_manager.check_updates_silent)
         
-        logger.info("Interface inicializada com sucesso")
-    
+        # Inscrisções no Event Bus
+        event_bus.subscribe("navigate", self._on_navigation_request)
+        
+        # Carrega pasta inicial
+        self._start_watcher()
+        
+        logger.info("Sistema v2.0 inicializado")
+
     def _setup_window(self):
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("blue")
+        ctk.set_appearance_mode(self.settings.get("appearance_mode", "dark"))
+        ctk.set_default_color_theme(self.settings.get("ui_theme", "blue"))
         
         self.root = ctk.CTk()
-        self.root.title(f"LogFácil v{VERSION} - Monitor de Serviços")
-        self.root.geometry("1400x800")
-        self.root.minsize(800, 600)
-    
-    def _build_topbar(self):
-        bar = ctk.CTkFrame(self.root, height=60, corner_radius=0)
-        bar.pack(side="top", fill="x", padx=0, pady=0)
-        bar.pack_propagate(False)
-        
-        ctk.CTkLabel(bar, text="📁 Raiz LOG:", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=(15, 5))
-        
-        self.entry = ctk.CTkEntry(bar, width=500, height=35, placeholder_text="Caminho da pasta LOG")
-        self.entry.pack(side="left", padx=5)
-        self.entry.insert(0, DEFAULT_ROOT)
-        
-        ctk.CTkButton(bar, text="📂 Escolher pasta", command=self._choose_root, height=35, width=120).pack(side="left", padx=5)
-        
-        ctk.CTkButton(bar, text="🔄 Reiniciar Todos", command=self._restart_all_services, height=35,
-                      width=180, fg_color="#f0ad4e", hover_color="#eea236").pack(side="right", padx=15)
-    
-    def _show_settings_menu(self):
-        menu = tk.Menu(self.root, tearoff=0, bg="#2b2b2b", fg="white",
-                       activebackground="#404040", activeforeground="white")
-        
-        menu.add_command(label="🔄 Verificar Atualizações", command=self.update_manager.check_and_update)
-        menu.add_command(label="⚙️ Configurações", command=self._open_settings)
-        menu.add_separator()
-        menu.add_command(label="ℹ️ Sobre", command=self._show_about)
-        
-        try:
-            x = self.root.winfo_pointerx()
-            y = self.root.winfo_pointery()
-            # O menu agora é usado apenas para Sobre e Atualizações se necessário,
-            # ou opcionalmente pode ser removido se não for usado.
-            # menu.tk_popup(x, y) 
-        finally:
-            pass
-    
-    def _show_about(self):
-        about_text = f"""
-LogFácil - Monitor de Serviços
-Versão: {CURRENT_VERSION}
+        self.root.title(f"LogFácil Pro v{VERSION}")
+        self.root.geometry("1400x850")
+        self.root.minsize(1000, 700)
 
-Um sistema completo para:
-• Monitoramento de logs em tempo real
-• Reinicialização de serviços Windows
-• Identificação de múltiplos PDVs
-• Atualização automática via GitHub
-
-GitHub: https://github.com/{GITHUB_REPO}
-"""
-        messagebox.showinfo("Sobre o LogFácil", about_text.strip())
-    
-    def _setup_settings_tab(self):
-        self.notebook.add("⚙️ Configs")
-        self.settings_tab = SettingsTab(self)
+    def _setup_layout(self):
+        # Sidebar
+        self.sidebar = Sidebar(self.root, on_change_callback=self._on_nav_change)
+        self.sidebar.pack(side="left", fill="y")
         
-        # Substitui o frame padrão criado pelo tabview pelo nosso frame customizado
-        for name, frame in list(self.notebook._tab_dict.items()):
-            if name == "⚙️ Configs" and frame != self.settings_tab.frame:
-                try:
-                    frame.destroy()
-                except Exception:
-                    pass
-                self.notebook._tab_dict[name] = self.settings_tab.frame
-                break
+        # Main Container (Right Side)
+        self.main_container = ctk.CTkFrame(self.root, corner_radius=0, fg_color="transparent")
+        self.main_container.pack(side="right", fill="both", expand=True)
+        
+        # Top Header (Contextual)
+        self.header = ctk.CTkFrame(self.main_container, height=60, corner_radius=0)
+        self.header.pack(side="top", fill="x")
+        self.header.pack_propagate(False)
+        
+        self.header_title = ctk.CTkLabel(self.header, text="Dashboard", font=ctk.CTkFont(size=18, weight="bold"))
+        self.header_title.pack(side="left", padx=20)
+        
+        # Folder Entry in Header
+        self.entry = ctk.CTkEntry(self.header, width=400, height=32, placeholder_text="Caminho da pasta LOG")
+        self.entry.pack(side="right", padx=10)
+        self.entry.insert(0, self.settings.get("last_folder") or DEFAULT_ROOT)
+        
+        ctk.CTkButton(self.header, text="📂", width=35, height=32, command=self._choose_root).pack(side="right", padx=5)
 
-    def apply_settings(self):
-        """Aplica as configurações atuais em toda a aplicação."""
-        if hasattr(self, 'open_tabs'):
-            for tab in self.open_tabs.values():
-                if hasattr(tab, 'update_settings'):
-                    tab.update_settings(self.settings)
-        logger.info("Configurações aplicadas na UI.")
-    
-    def _setup_footer(self):
-        footer = ctk.CTkFrame(self.root, height=25, corner_radius=0)
-        footer.pack(side="bottom", fill="x")
-        footer.pack_propagate(False)
-        ctk.CTkLabel(footer, text=f"v{VERSION} • LogFácil", text_color="#888888").pack(side="right", padx=10)
-    
-    def _setup_notebook(self):
-        self.notebook = ctk.CTkTabview(self.root)
-        self.notebook.pack(fill="both", expand=True, padx=10, pady=(10, 5))
-    
+        # Content Area
+        self.content_area = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.content_area.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Initialize Views
+        self.views["dashboard"] = DashboardTab(self)
+        self.views["pdvs"] = PDVMonitorTab(self)
+        self.views["settings"] = SettingsTab(self)
+        
+        self.log_container = ctk.CTkTabview(self.content_area)
+        self.views["logs"] = self.log_container
+        
+        # Binds Globais
+        self.root.bind("<Control-Shift-F>", lambda e: self._open_global_search())
+        self.root.bind("<Control-shift-f>", lambda e: self._open_global_search())
+
+    def _open_global_search(self):
+        GlobalSearch(self)
+
+    def _on_nav_change(self, view_id):
+        # Esconde todas as views
+        for v in self.views.values():
+            if hasattr(v, 'frame'):
+                v.frame.pack_forget()
+            else:
+                v.pack_forget()
+        
+        # Mostra a selecionada
+        target = self.views.get(view_id)
+        if target:
+            if hasattr(target, 'frame'):
+                target.frame.pack(fill="both", expand=True)
+            else:
+                target.pack(fill="both", expand=True)
+            
+            # Atualiza título do header
+            titles = {"dashboard": "Dashboard", "logs": "Monitoramento de Logs", "pdvs": "Status de PDVs", "settings": "Configurações"}
+            self.header_title.configure(text=titles.get(view_id, "LogFácil"))
+
+    def _on_navigation_request(self, view_id):
+        self.sidebar.select(view_id)
+
     def _setup_queues(self):
-        self.open_tabs = {}
-        self.tab_by_service = {}
         self.open_queue = queue.Queue()
         self.switch_queue = queue.Queue()
-        self.watcher = None
         self.root.after(120, self._consume_queues)
-    
+
     def _setup_close_handler(self):
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-    
-    def _setup_pdv_monitor_tab(self):
-        self.notebook.add("📊 PDVs")
-        self.pdv_monitor = PDVMonitorTab(self)
-        
-        for name, frame in list(self.notebook._tab_dict.items()):
-            if name == "📊 PDVs" and frame != self.pdv_monitor.frame:
-                try:
-                    frame.destroy()
-                except Exception:
-                    pass
-                self.notebook._tab_dict[name] = self.pdv_monitor.frame
-                break
-    
+
     def _choose_root(self):
-        path = filedialog.askdirectory(initialdir=self.entry.get() or DEFAULT_ROOT)
+        path = filedialog.askdirectory(initialdir=self.entry.get())
         if path:
             self.entry.delete(0, "end")
             self.entry.insert(0, path)
+            self.settings.set("last_folder", path)
             self._restart_watcher()
-    
+
     def _restart_watcher(self):
         self._stop_watcher()
         self._start_watcher()
-    
+
     def _start_watcher(self):
         root_dir = self.entry.get().strip() or DEFAULT_ROOT
         self.watcher = FolderWatcher(self, root_dir)
         self.watcher.start()
-    
+
     def _stop_watcher(self):
-        if self.watcher:
+        if hasattr(self, 'watcher') and self.watcher:
             self.watcher.stop_event.set()
-            self.watcher = None
-    
+        self.watcher = None
+
     def enqueue_open(self, path: str):
         self.open_queue.put(path)
-    
+
     def enqueue_switch_service_log(self, service: str, path: str):
         self.switch_queue.put((service, path))
-    
+
     def _consume_queues(self):
         try:
-            while True:
-                try:
-                    svc, path = self.switch_queue.get_nowait()
-                    self._switch_log_for_service(svc, path)
-                except queue.Empty:
-                    break
-            
-            while True:
-                try:
-                    p = self.open_queue.get_nowait()
-                    self._open_log_enforcing_one_per_service(p)
-                except queue.Empty:
-                    break
+            while not self.switch_queue.empty():
+                svc, path = self.switch_queue.get_nowait()
+                self._switch_log_for_service(svc, path)
+            while not self.open_queue.empty():
+                p = self.open_queue.get_nowait()
+                self._open_log_enforcing_one_per_service(p)
         except Exception as e:
             logger.error(f"Erro ao consumir filas: {e}")
-        
         self.root.after(200, self._consume_queues)
-    
+
     def _switch_log_for_service(self, service: str, new_path: str):
-        try:
-            old_path = self.tab_by_service.get(service)
-            if old_path and old_path != new_path:
-                self._close_log(old_path)
-            self._open_log_enforcing_one_per_service(new_path)
-        except Exception as e:
-            logger.error(f"Erro ao trocar log: {e}")
-    
+        old_path = self.tab_by_service.get(service)
+        if old_path and old_path != new_path:
+            self._close_log(old_path)
+        self._open_log_enforcing_one_per_service(new_path)
+
     def _open_log_enforcing_one_per_service(self, filepath: str):
-        try:
-            if not os.path.isfile(filepath):
-                return
-            
-            svc = service_from_path(filepath)
-            existing_path = self.tab_by_service.get(svc)
-            
-            if existing_path and existing_path != filepath:
-                self._close_log(existing_path)
-            
-            if filepath in self.open_tabs:
-                tab = self.open_tabs[filepath]
-                for tab_name, tab_frame in self.notebook._tab_dict.items():
-                    if tab_frame == tab.frame:
-                        self.notebook.set(tab_name)
-                        break
-                self.tab_by_service[svc] = filepath
-                return
-            
-            tab_name = svc
-            base_name = tab_name
-            counter = 1
-            while tab_name in self.notebook._tab_dict:
-                tab_name = f"{base_name} ({counter})"
-                counter += 1
-            
-            self.notebook.add(tab_name)
-            tab = LogTab(self, filepath)
-            
-            for name, frame in list(self.notebook._tab_dict.items()):
-                if name == tab_name and frame != tab.frame:
-                    try:
-                        frame.destroy()
-                    except Exception:
-                        pass
-                    self.notebook._tab_dict[name] = tab.frame
-                    break
-            
-            self.open_tabs[filepath] = tab
-            self.tab_by_service[svc] = filepath
-            self.notebook.set(tab_name)
-            
-        except Exception as e:
-            logger.error(f"Erro ao abrir log: {e}")
-    
+        if not os.path.isfile(filepath): return
+        svc = service_from_path(filepath)
+        
+        if filepath in self.open_tabs:
+            self.log_container.set(svc)
+            return
+
+        # Garante que não tenha tab duplicada para o mesmo serviço
+        existing = self.tab_by_service.get(svc)
+        if existing: self._close_log(existing)
+
+        self.log_container.add(svc)
+        tab = LogTab(self, filepath)
+        
+        # Injeta o frame no tabview (hack necessário no CTkTabview para frames custom)
+        for name, frame in list(self.log_container._tab_dict.items()):
+            if name == svc:
+                frame.destroy()
+                self.log_container._tab_dict[name] = tab.frame
+                break
+        
+        self.open_tabs[filepath] = tab
+        self.tab_by_service[svc] = filepath
+        event_bus.emit("log_opened", len(self.open_tabs))
+
     def _close_log(self, filepath: str):
-        try:
-            tab = self.open_tabs.pop(filepath, None)
-            if not tab:
-                return
-            
+        tab = self.open_tabs.pop(filepath, None)
+        if tab:
             tab.stop_event.set()
-            
-            for tab_name, tab_frame in list(self.notebook._tab_dict.items()):
-                if tab_frame == tab.frame:
-                    try:
-                        self.notebook.delete(tab_name)
-                    except Exception:
-                        pass
-                    break
-            
             svc = service_from_path(filepath)
             if self.tab_by_service.get(svc) == filepath:
                 del self.tab_by_service[svc]
-        except Exception as e:
-            logger.error(f"Erro ao fechar log: {e}")
-    
+            try: self.log_container.delete(svc)
+            except: pass
+            event_bus.emit("log_opened", len(self.open_tabs))
+
     def _restart_all_services(self):
-        if not hasattr(self, 'open_tabs') or not self.open_tabs:
-            messagebox.showinfo("Info", "Nenhum serviço sendo monitorado.")
-            return
-        
+        if not self.open_tabs: return
         services = set(tab.service_name for tab in self.open_tabs.values())
-        
         if messagebox.askyesno("Confirmar", f"Reiniciar TODOS os {len(services)} serviços?"):
-            for tab in self.open_tabs.values():
-                tab.btn_restart.configure(state="disabled")
-            
-            def restart_all_thread():
-                for service in sorted(services):
-                    try:
-                        restart_service_components(service)
-                    except Exception:
-                        pass
-                self.root.after(0, self._restart_all_callback)
-            
-            threading.Thread(target=restart_all_thread, daemon=True).start()
-    
-    def _restart_all_callback(self):
-        if hasattr(self, 'open_tabs'):
-            for tab in self.open_tabs.values():
-                tab.btn_restart.configure(state="normal")
-        messagebox.showinfo("Concluído", "Reinicialização em massa concluída!")
-    
+            def task():
+                for s in sorted(services): restart_service_components(s)
+                self.root.after(0, lambda: messagebox.showinfo("Fim", "Reinicialização concluída"))
+            threading.Thread(target=task, daemon=True).start()
+
+    def apply_settings(self):
+        for tab in self.open_tabs.values():
+            if hasattr(tab, 'update_settings'): tab.update_settings(self.settings)
+
     def _on_close(self):
-        """Encerra a aplicação de forma robusta e imediata."""
-        logger.info("Encerrando aplicação (Forced Exit)...")
+        logger.info("Encerrando LogFácil Pro...")
+        self._stop_watcher()
         os._exit(0)
-    
+
     def run(self):
         self.root.mainloop()
+
+if __name__ == "__main__":
+    App().run()

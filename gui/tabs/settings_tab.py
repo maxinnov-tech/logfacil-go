@@ -1,78 +1,121 @@
 """
 Arquivo: gui/tabs/settings_tab.py
-Descrição: Guia (Tab) de Configurações integrada ao Notebook principal.
-Substitui o antigo diálogo Toplevel para garantir máxima compatibilidade e 
-visibilidade dos controles de personalização, como o tamanho da fonte.
+Descrição: Guia (Tab) Pro de Configurações do LogFácil.
+Oferece controle centralizado sobre a aparência do sistema, comportamento
+de monitoramento e preferências de visualização, tudo salvo permanentemente.
 """
 import customtkinter as ctk
 from core.logger import logger
 
 class SettingsTab:
-    """Aba de configurações do sistema integrada ao notebook."""
+    """Painel de Configurações Pro."""
     
     def __init__(self, app):
         self.app = app
         self.settings = app.settings
-        self.frame = ctk.CTkFrame(app.notebook)
+        self.frame = ctk.CTkFrame(app.main_container, fg_color="transparent")
         self._build_ui()
 
     def _build_ui(self):
-        # Container centralizado para não ficar muito espalhado em telas grandes
-        container = ctk.CTkFrame(self.frame, fg_color="transparent", width=600)
-        container.pack(pady=40, padx=40, fill="y")
+        # Container Central
+        container = ctk.CTkFrame(self.frame, fg_color="transparent")
+        container.pack(pady=30, padx=50, fill="both", expand=True)
         
-        ctk.CTkLabel(container, text="⚙️ Configurações do Sistema", 
-                     font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(0, 30))
+        ctk.CTkLabel(container, text="⚙️ Preferências do Sistema", 
+                     font=ctk.CTkFont(size=24, weight="bold")).pack(anchor="w", pady=(0, 20))
         
-        # --- Seção: Log ---
-        section_log = ctk.CTkFrame(container, fg_color="transparent")
-        section_log.pack(fill="x", pady=10)
+        # --- Grupo: Visualização ---
+        vis_group = self._create_group(container, "🎨 Visualização e Estilo")
         
-        ctk.CTkLabel(section_log, text="Visualização de Logs", 
-                     font=ctk.CTkFont(size=16, weight="bold"), text_color="#4CAF50").pack(anchor="w", pady=(0, 10))
+        # Tamanho da Fonte
+        self._add_setting_row(vis_group, "Tamanho da fonte (Logs):", 
+                             self._create_font_slider, row=0)
         
-        # Grid para os controles da fonte
-        font_ctrl = ctk.CTkFrame(section_log, fg_color="#2b2b2b", corner_radius=10)
-        font_ctrl.pack(fill="x", padx=2, pady=5)
+        # Tema
+        self._add_setting_row(vis_group, "Modo de aparência:", 
+                             self._create_theme_switch, row=1)
         
-        ctk.CTkLabel(font_ctrl, text="Tamanho da fonte dos logs:", 
-                     font=ctk.CTkFont(size=14)).grid(row=0, column=0, padx=20, pady=20, sticky="w")
+        # --- Grupo: Monitoramento ---
+        mon_group = self._create_group(container, "🔍 Comportamento de Monitoramento")
         
-        current_font = self.settings.get("font_size", 13)
-        
-        self.font_slider = ctk.CTkSlider(font_ctrl, from_=8, to=24, number_of_steps=16,
-                                         command=self._on_font_change, width=250)
-        self.font_slider.set(current_font)
-        self.font_slider.grid(row=0, column=1, padx=10, pady=20)
-        
-        self.font_curr_lbl = ctk.CTkLabel(font_ctrl, text=str(current_font), 
-                                         font=ctk.CTkFont(size=16, weight="bold"), width=40)
-        self.font_curr_lbl.grid(row=0, column=2, padx=20, pady=20)
-        
-        # --- Botão Salvar ---
-        save_btn = ctk.CTkButton(container, text="💾 Salvar e Aplicar Agora", 
-                                 command=self._save, height=45, width=250,
-                                 font=ctk.CTkFont(size=15, weight="bold"),
-                                 fg_color="#28a745", hover_color="#218838")
-        save_btn.pack(pady=40)
-        
-        # Mensagem de ajuda
-        ctk.CTkLabel(container, text="As alterações serão aplicadas em todas as abas de log abertas.",
-                     text_color="gray", font=ctk.CTkFont(size=12)).pack()
+        # Intervalo de Scan
+        self._add_setting_row(mon_group, "Intervalo de scan (seg):", 
+                             self._create_scan_slider, row=0)
 
-    def _on_font_change(self, value):
-        val = int(value)
-        self.font_curr_lbl.configure(text=str(val))
+        # Botão Salvar Geral
+        self.save_btn = ctk.CTkButton(container, text="💾 Salvar Todas as Alterações", 
+                                      command=self._save_all, height=45, width=280,
+                                      font=ctk.CTkFont(size=15, weight="bold"),
+                                      fg_color="#2ecc71", hover_color="#27ae60")
+        self.save_btn.pack(pady=40, anchor="center")
 
-    def _save(self):
-        new_font = int(self.font_slider.get())
-        self.settings.set("font_size", new_font)
+    def _create_group(self, parent, title):
+        frame = ctk.CTkFrame(parent, fg_color="#2b2b2b", corner_radius=15)
+        frame.pack(fill="x", pady=10, padx=0)
         
-        # Aplica na aplicação principal
-        self.app.apply_settings()
-        logger.info(f"Configurações salvas: fonte {new_font}")
+        ctk.CTkLabel(frame, text=title, font=ctk.CTkFont(size=14, weight="bold"), 
+                     text_color="#4CAF50").pack(anchor="w", padx=20, pady=(15, 10))
         
-        # Feedback visual simples (opcional)
-        original_text = self.font_curr_lbl.cget("text")
-        self.font_curr_lbl.configure(text_color="green")
-        self.frame.after(1000, lambda: self.font_curr_lbl.configure(text_color="white"))
+        content = ctk.CTkFrame(frame, fg_color="transparent")
+        content.pack(fill="x", padx=20, pady=(0, 15))
+        content.grid_columnconfigure(1, weight=1)
+        return content
+
+    def _add_setting_row(self, parent, label_text, widget_func, row):
+        ctk.CTkLabel(parent, text=label_text).grid(row=row, column=0, sticky="w", pady=10)
+        widget = widget_func(parent)
+        widget.grid(row=row, column=1, sticky="e", pady=10, padx=(20, 0))
+
+    def _create_font_slider(self, parent):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        current = self.settings.get("font_size", 13)
+        
+        self.font_lbl = ctk.CTkLabel(frame, text=str(current), width=30, font=ctk.CTkFont(weight="bold"))
+        self.font_lbl.pack(side="right", padx=(10, 0))
+        
+        self.font_slider = ctk.CTkSlider(frame, from_=8, to=24, number_of_steps=16, width=200,
+                                         command=lambda v: self.font_lbl.configure(text=str(int(v))))
+        self.font_slider.set(current)
+        self.font_slider.pack(side="right")
+        return frame
+
+    def _create_theme_switch(self, parent):
+        current = self.settings.get("appearance_mode", "dark")
+        self.theme_var = ctk.StringVar(value=current)
+        return ctk.CTkSegmentedButton(parent, values=["light", "dark"], variable=self.theme_var, width=200)
+
+    def _create_scan_slider(self, parent):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        current = self.settings.get("scan_interval", 2.0)
+        self.scan_lbl = ctk.CTkLabel(frame, text=f"{current}s", width=40)
+        self.scan_lbl.pack(side="right", padx=(10, 0))
+        
+        self.scan_slider = ctk.CTkSlider(frame, from_=0.5, to=10.0, number_of_steps=19, width=200,
+                                         command=lambda v: self.scan_lbl.configure(text=f"{round(float(v),1)}s"))
+        self.scan_slider.set(current)
+        self.scan_slider.pack(side="right")
+        return frame
+
+    def _save_all(self):
+        try:
+            # Coleta valores
+            new_font = int(self.font_slider.get())
+            new_theme = self.theme_var.get()
+            new_scan = round(float(self.scan_slider.get()), 1)
+            
+            # Salva no manager
+            self.settings.set("font_size", new_font)
+            self.settings.set("appearance_mode", new_theme)
+            self.settings.set("scan_interval", new_scan)
+            
+            # Aplica mudanças imediatas
+            ctk.set_appearance_mode(new_theme)
+            self.app.apply_settings()
+            
+            # Feedback
+            self.save_btn.configure(text="✅ Configurações Salvas!", fg_color="#27ae60")
+            self.frame.after(2000, lambda: self.save_btn.configure(text="💾 Salvar Todas as Alterações", fg_color="#2ecc71"))
+            
+            logger.info("Configurações atualizadas pelo usuário.")
+        except Exception as e:
+            logger.error(f"Erro ao salvar configurações: {e}")
