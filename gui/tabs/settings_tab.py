@@ -40,7 +40,7 @@ class SettingsTab:
         
         current_font = self.settings.get("font_size", 13)
         
-        self.font_slider = ctk.CTkSlider(font_ctrl, from_=8, to_=24, number_of_steps=16,
+        self.font_slider = ctk.CTkSlider(font_ctrl, from_=8, to=24, number_of_steps=16,
                                          command=self._on_font_change, width=250)
         self.font_slider.set(current_font)
         self.font_slider.grid(row=0, column=1, padx=10, pady=20)
