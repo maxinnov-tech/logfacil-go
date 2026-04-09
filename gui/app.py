@@ -135,7 +135,7 @@ class App:
         
         # Binds Globais
         self.root.bind("<Control-Shift-F>", lambda e: self._open_global_search())
-        self.root.bind("<Control-shift-f>", lambda e: self._open_global_search())
+        self.root.bind("<Control-Shift-f>", lambda e: self._open_global_search())
 
     def _open_global_search(self):
         GlobalSearch(self)
