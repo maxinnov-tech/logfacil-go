@@ -23,6 +23,8 @@ from core.utils import service_from_path, find_latest_by_service
 from gui.managers.update_manager import AutoUpdateManager
 from gui.tabs.log_tab import LogTab
 from gui.tabs.pdv_tab import PDVMonitorTab
+from gui.dialogs.settings_dialog import SettingsDialog
+from core.settings_manager import SettingsManager
 
 class FolderWatcher(threading.Thread):
     def __init__(self, app: "App", root_dir: str):
@@ -61,6 +63,7 @@ class App:
         logger.info(f"Iniciando LogFácil v{VERSION}")
         logger.info("="*50)
         
+        self.settings = SettingsManager()
         self._setup_window()
         self._build_topbar()
         self._setup_notebook()
@@ -108,6 +111,7 @@ class App:
                        activebackground="#404040", activeforeground="white")
         
         menu.add_command(label="🔄 Verificar Atualizações", command=self.update_manager.check_and_update)
+        menu.add_command(label="⚙️ Configurações", command=self._open_settings)
         menu.add_separator()
         menu.add_command(label="ℹ️ Sobre", command=self._show_about)
         
@@ -132,6 +136,17 @@ Um sistema completo para:
 GitHub: https://github.com/{GITHUB_REPO}
 """
         messagebox.showinfo("Sobre o LogFácil", about_text.strip())
+    
+    def _open_settings(self):
+        SettingsDialog(self.root, self.settings)
+
+    def apply_settings(self):
+        """Aplica as configurações atuais em toda a aplicação."""
+        if hasattr(self, 'open_tabs'):
+            for tab in self.open_tabs.values():
+                if hasattr(tab, 'update_settings'):
+                    tab.update_settings(self.settings)
+        logger.info("Configurações aplicadas na UI.")
     
     def _setup_footer(self):
         footer = ctk.CTkFrame(self.root, height=25, corner_radius=0)

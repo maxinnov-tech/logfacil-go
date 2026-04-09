@@ -77,7 +77,9 @@ class LogTab:
         text_frame = ctk.CTkFrame(self.frame)
         text_frame.pack(side="top", fill="both", expand=True, padx=5, pady=(0, 5))
         
-        self.text = ctk.CTkTextbox(text_frame, wrap="none", font=ctk.CTkFont(family="Consolas", size=13),
+        
+        font_size = self.app.settings.get("font_size", 13)
+        self.text = ctk.CTkTextbox(text_frame, wrap="none", font=ctk.CTkFont(family="Consolas", size=font_size),
                                    activate_scrollbars=True, state="disabled")
         self.text.pack(side="left", fill="both", expand=True)
         
@@ -272,3 +274,11 @@ class LogTab:
         self.unread = 0
         if combo:
             self._append(combo)
+
+    def update_settings(self, settings):
+        """Atualiza visualmente a aba com novas configurações."""
+        try:
+            new_font_size = settings.get("font_size", 13)
+            self.text.configure(font=ctk.CTkFont(family="Consolas", size=new_font_size))
+        except Exception as e:
+            logger.error(f"Erro ao atualizar fonte da aba {self.service_name}: {e}")
