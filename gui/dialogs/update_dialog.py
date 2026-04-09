@@ -210,11 +210,11 @@ copy /Y "{self.downloaded_file}" "{app_path}" > NUL
 :: Deletar arquivo temporario baixado da pasta Update
 del /F /Q "{self.downloaded_file}" > NUL 2>&1
 
-:: Inicia o novo aplicativo
-start "" "{app_path}"
-
 :: Tenta deletar o backup agora (pode falhar se o Windows travar por uns segundos, mas limpamos no proximo update tbm)
 if exist "{app_path}.bak" del /F /Q "{app_path}.bak" > NUL 2>&1
+
+:: Mensagem de sucesso e aviso para abrir manualmente
+powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('Atualização concluída com sucesso! Por favor, abra o LogFácil novamente.', 'LogFácil - Sucesso', 'OK', 'Information')" > NUL 2>&1
 
 :: Se auto deletar
 del /F /Q "%~f0"
