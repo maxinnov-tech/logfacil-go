@@ -24,7 +24,7 @@ from core.utils import service_from_path, find_latest_by_service
 from gui.managers.update_manager import AutoUpdateManager
 from gui.tabs.log_tab import LogTab
 from gui.tabs.pdv_tab import PDVMonitorTab
-from gui.dialogs.settings_dialog import SettingsDialog
+from gui.tabs.settings_tab import SettingsTab
 from core.settings_manager import SettingsManager
 
 class FolderWatcher(threading.Thread):
@@ -73,6 +73,7 @@ class App:
         self._setup_footer()
         self._setup_close_handler()
         self._setup_pdv_monitor_tab()
+        self._setup_settings_tab()
         
         self.update_manager = AutoUpdateManager(self)
         self.root.after(3000, self.update_manager.check_updates_silent)
@@ -101,11 +102,8 @@ class App:
         
         ctk.CTkButton(bar, text="📂 Escolher pasta", command=self._choose_root, height=35, width=120).pack(side="left", padx=5)
         
-        settings_btn = ctk.CTkButton(bar, text="⚙️", width=40, height=35, command=self._show_settings_menu)
-        settings_btn.pack(side="right", padx=5)
-        
         ctk.CTkButton(bar, text="🔄 Reiniciar Todos", command=self._restart_all_services, height=35,
-                      width=180, fg_color="#f0ad4e", hover_color="#eea236").pack(side="right", padx=5)
+                      width=180, fg_color="#f0ad4e", hover_color="#eea236").pack(side="right", padx=15)
     
     def _show_settings_menu(self):
         menu = tk.Menu(self.root, tearoff=0, bg="#2b2b2b", fg="white",
@@ -119,9 +117,11 @@ class App:
         try:
             x = self.root.winfo_pointerx()
             y = self.root.winfo_pointery()
-            menu.tk_popup(x, y)
+            # O menu agora é usado apenas para Sobre e Atualizações se necessário,
+            # ou opcionalmente pode ser removido se não for usado.
+            # menu.tk_popup(x, y) 
         finally:
-            menu.grab_release()
+            pass
     
     def _show_about(self):
         about_text = f"""
@@ -138,8 +138,19 @@ GitHub: https://github.com/{GITHUB_REPO}
 """
         messagebox.showinfo("Sobre o LogFácil", about_text.strip())
     
-    def _open_settings(self):
-        self._settings_window = SettingsDialog(self.root, self)
+    def _setup_settings_tab(self):
+        self.notebook.add("⚙️ Configs")
+        self.settings_tab = SettingsTab(self)
+        
+        # Substitui o frame padrão criado pelo tabview pelo nosso frame customizado
+        for name, frame in list(self.notebook._tab_dict.items()):
+            if name == "⚙️ Configs" and frame != self.settings_tab.frame:
+                try:
+                    frame.destroy()
+                except Exception:
+                    pass
+                self.notebook._tab_dict[name] = self.settings_tab.frame
+                break
 
     def apply_settings(self):
         """Aplica as configurações atuais em toda a aplicação."""
@@ -335,15 +346,8 @@ GitHub: https://github.com/{GITHUB_REPO}
         messagebox.showinfo("Concluído", "Reinicialização em massa concluída!")
     
     def _on_close(self):
-        logger.info("Encerrando aplicação...")
-        self._stop_watcher()
-        if hasattr(self, 'pdv_monitor'):
-            self.pdv_monitor.parar_monitoramento()
-        if hasattr(self, 'open_tabs'):
-            for t in list(self.open_tabs.values()):
-                t.stop_event.set()
-        self.root.destroy()
-        logger.info("Aplicação encerrada")
+        """Encerra a aplicação de forma robusta e imediata."""
+        logger.info("Encerrando aplicação (Forced Exit)...")
         os._exit(0)
     
     def run(self):
