@@ -13,9 +13,9 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from core.logger import logger
-from core.config import MAX_START_BYTES, MAX_VIEW_LINES, TRIM_BATCH, PAUSED_BUFFER_MAX, TAIL_POLL_INTERVAL_SEC
+from core.config import MAX_START_BYTES, MAX_VIEW_LINES, TRIM_BATCH, PAUSED_BUFFER_MAX, TAIL_POLL_INTERVAL_SEC, SERVICE_COMPONENTS
 from core.utils import service_from_path, open_text_auto, seek_tail
-from core.os_services import restart_service_components
+from core.os_services import restart_service_components, check_service_status
 from gui.components.search import IncrementalSearch
 from gui.components.spinner import LoadingSpinner
 from gui.components.minimap import LogMinimap
@@ -49,10 +49,19 @@ class LogTab:
         self.custom_highlight_term = ""
         self.custom_highlight_color = self.colors["highlight_color"]
         
+        # Nome do serviço Windows correspondente (para verificação de status)
+        components = SERVICE_COMPONENTS.get(self.service_name, {})
+        win_services = components.get("services", [])
+        self._win_service = win_services[0] if win_services else None
+        self._svc_status  = None   # None = desconhecido | True = rodando | False = parado
+        
         self._build_ui()
         self._setup_tags()
         self._start_tail()
         self._schedule_drain()
+        # Inicia monitoramento de status (apenas se há serviço mapeado)
+        if self._win_service:
+            self._schedule_status_check()
 
     def _build_ui(self):
         # Header modernizado
@@ -60,10 +69,29 @@ class LogTab:
         self.header.pack(side="top", fill="x", padx=10, pady=(5, 10))
         self.header.pack_propagate(False)
         
-        # Info do Serviço
-        title_lbl = ctk.CTkLabel(self.header, text=f"⚡ {self.service_name}", 
-                                font=ctk.CTkFont(size=14, weight="bold"), text_color="#3498db")
-        title_lbl.pack(side="left", padx=15)
+        # Info do Serviço + Indicador de Status
+        info_frame = ctk.CTkFrame(self.header, fg_color="transparent")
+        info_frame.pack(side="left", padx=15)
+
+        # Canvas para o círculo pulsante de status
+        self.status_canvas = tk.Canvas(
+            info_frame, width=14, height=14,
+            bg=self.header.cget("fg_color")[1] if isinstance(self.header.cget("fg_color"), tuple) else "#212121",
+            highlightthickness=0
+        )
+        self.status_canvas.pack(side="left", padx=(0, 6))
+        self._dot = self.status_canvas.create_oval(2, 2, 12, 12, fill="#888888", outline="")
+        self._pulse_step = 0
+
+        title_lbl = ctk.CTkLabel(info_frame, text=f"⚡ {self.service_name}",
+                                 font=ctk.CTkFont(size=14, weight="bold"), text_color="#3498db")
+        title_lbl.pack(side="left")
+
+        # Tooltip do status (aparece ao lado do círculo)
+        self._status_tooltip_text = "Verificando..."
+        self.status_canvas.bind("<Enter>", self._show_status_tooltip)
+        self.status_canvas.bind("<Leave>", self._hide_status_tooltip)
+        self._tooltip_win = None
         
         # Botões de Ação (Agrupados à direita)
         action_frame = ctk.CTkFrame(self.header, fg_color="transparent")
@@ -262,3 +290,71 @@ class LogTab:
         m.add_command(label="🔍 Buscar", command=self._show_search)
         m.add_command(label="🗑 Limpar Tela", command=lambda: [self.text.configure(state="normal"), self.text.delete("1.0", "end"), self.text.configure(state="disabled")])
         self.text.bind("<Button-3>", lambda e: m.tk_popup(e.x_root, e.y_root))
+
+    # --- Métodos do Indicador de Status ---
+
+    def _schedule_status_check(self):
+        """Agenda uma verificação de status do serviço Windows em background."""
+        if self.stop_event.is_set(): return
+        threading.Thread(target=self._check_status_worker, daemon=True).start()
+        # Re-agenda a cada 10 segundos
+        self.frame.after(10000, self._schedule_status_check)
+
+    def _check_status_worker(self):
+        """Verifica o status real do serviço Windows sem travar a UI."""
+        if not self._win_service: return
+        exists, running, msg = check_service_status(self._win_service)
+        self._svc_status = running if exists else None
+        self._status_tooltip_text = msg
+        self.frame.after(0, self._update_status_ui)
+
+    def _update_status_ui(self):
+        """Atualiza a cor do círculo baseado no status."""
+        if self._svc_status is True:
+            color = "#2ecc71" # Verde rodando
+            if not hasattr(self, "_pulsing"):
+                self._pulsing = True
+                self._pulse()
+        elif self._svc_status is False:
+            color = "#e74c3c" # Vermelho parado
+            self._pulsing = False
+        else:
+            color = "#888888" # Cinza desconhecido/não mapeado
+            self._pulsing = False
+        
+        self.status_canvas.itemconfig(self._dot, fill=color)
+
+    def _pulse(self):
+        """Efeito de pulsação suave no círculo verde."""
+        if not hasattr(self, "_pulsing") or not self._pulsing or self._svc_status is not True:
+            self.status_canvas.itemconfig(self._dot, outline="")
+            return
+
+        # Varia o outline para simular pulso
+        self._pulse_step = (self._pulse_step + 1) % 10
+        alpha = abs(5 - self._pulse_step) / 5.0 # 0.0 a 1.0
+        
+        # Cor de brilho verde
+        glow_color = "#2ecc71"
+        self.status_canvas.itemconfig(self._dot, outline=glow_color, width=2 if alpha > 0.5 else 0)
+        
+        self.frame.after(200, self._pulse)
+
+    def _show_status_tooltip(self, event):
+        """Exibe um mini-tooltip com o status detalhado."""
+        self._hide_status_tooltip()
+        x = event.x_root + 10
+        y = event.y_root + 10
+        
+        self._tooltip_win = tk.Toplevel()
+        self._tooltip_win.wm_overrideredirect(True)
+        self._tooltip_win.geometry(f"+{x}+{y}")
+        
+        lbl = tk.Label(self._tooltip_win, text=self._status_tooltip_text, 
+                       bg="#333", fg="white", padx=5, pady=2, font=("Segoe UI", 9))
+        lbl.pack()
+
+    def _hide_status_tooltip(self, event=None):
+        if self._tooltip_win:
+            self._tooltip_win.destroy()
+            self._tooltip_win = None

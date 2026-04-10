@@ -13,6 +13,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
+from PIL import Image
 
 from core.logger import logger
 from core.config import VERSION, DEFAULT_ROOT, CURRENT_VERSION, GITHUB_REPO, SCAN_INTERVAL_SEC
@@ -27,6 +28,7 @@ from gui.tabs.dashboard_tab import DashboardTab
 from gui.tabs.log_tab import LogTab
 from gui.tabs.pdv_tab import PDVMonitorTab
 from gui.tabs.settings_tab import SettingsTab
+from gui.utils.icon_manager import icons
 from gui.managers.global_search import GlobalSearch
 from gui.components.status_bar import StatusBar
 
@@ -39,6 +41,8 @@ class FolderWatcher(threading.Thread):
         self.latest_by_service = {}
     
     def run(self):
+        # Pequena pausa para garantir que o sistema de arquivos esteja estável no boot
+        time.sleep(0.5)
         self._scan_and_open(initial=True)
         while not self.stop_event.is_set():
             self._scan_and_open(initial=False)
@@ -103,57 +107,68 @@ class App:
         self.root.minsize(1000, 700)
 
     def _setup_layout(self):
-        # 1. Primeiro definimos o Main Container (mas não empacotamos ainda para respeitar a ordem)
-        self.main_container = ctk.CTkFrame(self.root, corner_radius=0, fg_color="transparent")
-        
-        # 2. Barra de Status (Garante a base total)
-        self.status_bar = StatusBar(self.root)
-        self.status_bar.pack(side="bottom", fill="x")
-        
-        # 3. Initialize Views
-        self.views["dashboard"] = DashboardTab(self)
-        self.views["pdvs"] = PDVMonitorTab(self)
-        self.views["settings"] = SettingsTab(self)
-        
-        # 4. Log Container
-        self.log_container = ctk.CTkTabview(self.main_container)
-        self.views["logs"] = self.log_container
-        
-        # Top Header (Contextual)
-        self.header = ctk.CTkFrame(self.main_container, height=60, corner_radius=0)
+        # ============================================================
+        # HEADER - Ocupa a largura TOTAL da janela (acima de tudo)
+        # ============================================================
+        self.header = ctk.CTkFrame(self.root, height=64, corner_radius=0,
+                                   fg_color=("#e8e8e8", "#1a1a2e"))
         self.header.pack(side="top", fill="x")
         self.header.pack_propagate(False)
 
-        # 1. Botão de Toggle (Menu Hambúrguer)
-        self.menu_btn = ctk.CTkButton(self.header, text="☰", width=40, height=40,
-                                      fg_color="transparent", hover_color=("#dbdbdb", "#333333"),
-                                      text_color=("#3498db"), font=ctk.CTkFont(size=22),
-                                      command=self._toggle_sidebar)
-        self.menu_btn.pack(side="left", padx=10)
-        
-        # 2. Título da Aba
-        self.header_title = ctk.CTkLabel(self.header, text="Dashboard", font=ctk.CTkFont(size=18, weight="bold"))
-        self.header_title.pack(side="left", padx=10)
+        # Logomarca no canto esquerdo do header
+        logo_path = icons.resource_path("assets/LogoSistema.png")
+        try:
+            pil_img = Image.open(logo_path)
+            self.header_logo_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(200, 44))
+            self.logo_header = ctk.CTkLabel(self.header, image=self.header_logo_img, text="")
+            self.logo_header.pack(side="left", padx=(16, 0))
+        except Exception as e:
+            logger.error(f"Erro ao carregar logo no header: {e}")
+            self.logo_header = ctk.CTkLabel(self.header, text="LogFácil Pro",
+                                            font=ctk.CTkFont(size=22, weight="bold"), text_color="#3498db")
+            self.logo_header.pack(side="left", padx=(16, 0))
 
-        # Agora sim inicializamos o Sidebar (depois de ter views e cabeçalho prontos)
-        self.sidebar = Sidebar(self.root, on_change_callback=self._on_nav_change)
+        # ============================================================
+        # BARRA DE STATUS - Base da janela
+        # ============================================================
+        self.status_bar = StatusBar(self.root)
+        self.status_bar.pack(side="bottom", fill="x")
+
+        # ============================================================
+        # BODY - Frame que contém Sidebar + Conteúdo principal
+        # ============================================================
+        self.body = ctk.CTkFrame(self.root, corner_radius=0, fg_color="transparent")
+        self.body.pack(side="top", fill="both", expand=True)
+
+        # Main container criado PRIMEIRO (antes da sidebar)
+        self.main_container = ctk.CTkFrame(self.body, corner_radius=0, fg_color="transparent")
+        self.main_container.pack(side="right", fill="both", expand=True)
+
+        # ============================================================
+        # VIEWS - Inicializadas ANTES da Sidebar para evitar navegação vazia
+        # ============================================================
+        self.views["dashboard"] = DashboardTab(self)
+        self.views["pdvs"] = PDVMonitorTab(self)
+        self.views["settings"] = SettingsTab(self)
+
+        # Log Container (TabView)
+        self.log_container = ctk.CTkTabview(self.main_container)
+        self.views["logs"] = self.log_container
+
+        # Sidebar criada DEPOIS das views (para que a navegação inicial funcione)
+        self.sidebar = Sidebar(self.body, on_change_callback=self._on_nav_change)
         self.sidebar.pack(side="left", fill="y")
-        
-        # Agore empacotamos o Main Container por último para preencher o resto
-        self.main_container.pack(side="left", fill="both", expand=True)
-        
+
+        # Garante que a view de Logs é exibida ao iniciar
+        # (usamos after para aguardar o primeiro draw da janela)
+        self.root.after(100, lambda: self._on_nav_change("logs"))
+
         # Binds Globais
         self.root.bind("<Control-Shift-F>", lambda e: self._open_global_search())
         self.root.bind("<Control-Shift-f>", lambda e: self._open_global_search())
 
     def _open_global_search(self):
         GlobalSearch(self)
-
-    def _toggle_sidebar(self):
-        if self.sidebar.winfo_ismapped():
-            self.sidebar.pack_forget()
-        else:
-            self.sidebar.pack(side="left", fill="y", before=self.main_container)
 
     def _on_nav_change(self, view_id):
         # Esconde todas as views
@@ -171,9 +186,9 @@ class App:
             else:
                 target.pack(fill="both", expand=True, padx=10, pady=10)
             
-            # Atualiza título do header
-            titles = {"dashboard": "Dashboard", "logs": "Monitoramento de Logs", "pdvs": "Status de PDVs", "settings": "Configurações"}
-            self.header_title.configure(text=titles.get(view_id, "LogFácil"))
+            # O título textual foi removido em favor da logo central fixa.
+            # Se desejar manter o título junto com a logo de forma discreta, podemos ajustar.
+            pass
 
     def _on_navigation_request(self, view_id):
         self.sidebar.select(view_id)
@@ -220,9 +235,16 @@ class App:
             while not self.switch_queue.empty():
                 svc, path = self.switch_queue.get_nowait()
                 self._switch_log_for_service(svc, path)
+            to_open = []
             while not self.open_queue.empty():
-                p = self.open_queue.get_nowait()
-                self._open_log_enforcing_one_per_service(p)
+                to_open.append(self.open_queue.get_nowait())
+            
+            # Ordenação Alfabética do Lote (Garante que mesmo que cheguem fora de ordem no queue, 
+            # as abas sejam criadas na ordem correta)
+            if to_open:
+                to_open.sort(key=lambda p: service_from_path(p).lower())
+                for p in to_open:
+                    self._open_log_enforcing_one_per_service(p)
         except Exception as e:
             logger.error(f"Erro ao consumir filas: {e}")
         self.root.after(200, self._consume_queues)

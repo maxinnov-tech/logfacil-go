@@ -4,7 +4,7 @@ Descrição: Central de configurações globais do LogFácil.
 Este arquivo armazena as constantes, parâmetros de funcionamento e configurações
 necessárias para a aplicação. Dentre as principais configurações estão:
 - Parâmetros do repositório no GitHub para o sistema de atualizações (repo, branch, versão atual).
-- Padrões de sistema: raiz padrão de logs (C:\Quality\LOG).
+- Padrões de sistema: raiz padrão de logs (r"C:\Quality\LOG").
 - Tunings e limites de performance para leitura de logs (intervalos de escaneamento, polling, tamanho de blocos para início de leitura e limite do buffer exibido).
 - Definição dos nomes lógicos dos serviços e seus respectivos executáveis (SERVICE_COMPONENTS) para o recurso de reinicialização de serviços.
 """
@@ -29,10 +29,10 @@ ENCODINGS = ("cp1252", "latin-1", "utf-8")
 LOG_EXTENSIONS = ('.log', '.txt', '.out', '.err', '.trace', '.debug')
 
 SERVICE_COMPONENTS = {
-    "Integra": {"tasks": ["IntegraWebService.exe"]},
-    "PulserWeb": {"tasks": ["PulserWeb.exe"]},
-    "webPostoFiscalServer": {"tasks": ["webPostoFiscalServer.exe"]},
-    "webPostoLeituraAutomaçao": {"tasks": ["webPostoLeituraAutomacao.exe"]},
-    "webPostoPayServer": {"tasks": ["webPostoPaySW.exe"]},
-    "webPostoPremmialntegracao": {"tasks": ["webPostoPremiumIntegracao.exe"]},
+    "Integra":                   {"services": ["srvIntegraWeb"],     "tasks": ["IntegraWebService.exe"]},
+    "PulserWeb":                 {"services": [],                     "tasks": ["PulserWeb.exe"]},
+    "webPostoFiscalServer":      {"services": ["ServicoFiscal"],     "tasks": ["webPostoFiscalServer.exe"]},
+    "webPostoLeituraAutomaçao":  {"services": ["ServicoAutomacao"],  "tasks": ["webPostoLeituraAutomacao.exe"]},
+    "webPostoPayServer":         {"services": ["webPostoPayServer"],  "tasks": ["webPostoPaySW.exe"]},
+    "webPostoPremmialntegracao": {"services": [],                     "tasks": ["webPostoPremiumIntegracao.exe"]},
 }
