@@ -5,6 +5,7 @@ Lida com o carregamento de imagens PNG e conversão para CTkImage,
 suportando temas claro e escuro.
 """
 import os
+import sys
 from PIL import Image
 import customtkinter as ctk
 from core.logger import logger
@@ -19,14 +20,24 @@ class IconManager:
         return cls._instance
 
     @staticmethod
+    def resource_path(relative_path):
+        """Retorna o caminho absoluto para o recurso, funcionando para dev e PyInstaller."""
+        try:
+            # PyInstaller cria uma pasta temporária e armazena o caminho em _MEIPASS
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
+
+    @staticmethod
     def get_icon(name, size=(20, 20)):
         """Carrega e retorna um CTkImage para o nome do ícone especificado."""
         if name in IconManager._icons:
             return IconManager._icons[name]
         
-        # Caminho base para ícones
-        base_path = os.path.join(os.getcwd(), "assets", "icons")
-        icon_path = os.path.join(base_path, f"{name}.png")
+        # Caminho resolvido (suporta EXE)
+        icon_path = IconManager.resource_path(os.path.join("assets", "icons", f"{name}.png"))
         
         try:
             if not os.path.exists(icon_path):
