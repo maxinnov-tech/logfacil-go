@@ -4,6 +4,7 @@ Descrição: Barra lateral de navegação (Sidebar) do LogFácil v2.
 """
 import customtkinter as ctk
 from gui.utils.icon_manager import icons
+from core.config import VERSION
 
 class Sidebar(ctk.CTkFrame):
     """Barra lateral de navegação personalizada."""
@@ -35,8 +36,8 @@ class Sidebar(ctk.CTkFrame):
         # Botão Settings no rodapé
         self._add_nav_btn("Configurações", "settings", icon_name="settings")
         
-        # Versão
-        self.version_label = ctk.CTkLabel(self, text="v2.0.1", text_color="gray", font=ctk.CTkFont(size=10))
+        # Versão dinâmica
+        self.version_label = ctk.CTkLabel(self, text=f"v{VERSION}", text_color="gray", font=ctk.CTkFont(size=10))
         self.version_label.pack(pady=10)
 
     def _add_nav_btn(self, text, view_id, icon_name=None):
