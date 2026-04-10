@@ -21,7 +21,7 @@ class GlobalSearch(ctk.CTkToplevel):
 
     def _build_ui(self):
         # Header
-        header = ctk.CTkFrame(self, height=80, fg_color="#2b2b2b")
+        header = ctk.CTkFrame(self, height=80, fg_color=("#dbdbdb", "#2b2b2b"))
         header.pack(fill="x", padx=15, pady=15)
         header.pack_propagate(False)
         
@@ -31,7 +31,7 @@ class GlobalSearch(ctk.CTkToplevel):
         self.entry.bind("<Return>", lambda e: self._do_search())
         
         ctk.CTkButton(header, text="🔍 Buscar", width=100, command=self._do_search,
-                      fg_color="#4CAF50", hover_color="#45a049").pack(side="left", padx=5)
+                      fg_color="#3498db", hover_color="#2980b9").pack(side="left", padx=5)
 
         # Results Area
         self.results_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
@@ -66,10 +66,10 @@ class GlobalSearch(ctk.CTkToplevel):
         self.status_lbl.configure(text=f"Fim da busca: {hits} ocorrências encontradas." if hits > 0 else "Nenhum resultado encontrado.")
 
     def _add_result_row(self, service, line_num, snippet, query):
-        row = ctk.CTkFrame(self.results_frame, fg_color="#333333", corner_radius=8)
+        row = ctk.CTkFrame(self.results_frame, fg_color=("#ebebeb", "#333333"), corner_radius=8)
         row.pack(fill="x", pady=2, padx=5)
         
-        ctk.CTkLabel(row, text=f"[{service}]", font=ctk.CTkFont(weight="bold", size=12), text_color="#4CAF50", width=120).pack(side="left", padx=10)
+        ctk.CTkLabel(row, text=f"[{service}]", font=ctk.CTkFont(weight="bold", size=12), text_color="#3498db", width=120).pack(side="left", padx=10)
         ctk.CTkLabel(row, text=f"Linha {line_num}:", font=ctk.CTkFont(size=11), text_color="gray").pack(side="left")
         
         # Snippet com destaque (simplificado)
@@ -97,7 +97,7 @@ class GlobalSearch(ctk.CTkToplevel):
         if tab:
             tab.text.see(f"{line_num}.0")
             tab.text.tag_add("search_hit", f"{line_num}.0", f"{line_num}.end")
-            tab.text.tag_config("search_hit", background="#4CAF50", foreground="white")
+            tab.text.tag_config("search_hit", background="#3498db", foreground="white")
             # Auto-pauza para o usuário ler
             if tab.follow:
                 tab.toggle_follow()

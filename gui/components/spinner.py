@@ -29,17 +29,17 @@ class LoadingSpinner:
         self._animation_running = True
         self._dot_count = 0
         
-        self.frame = ctk.CTkFrame(self.parent, fg_color="#2b2b2b", corner_radius=15, width=280, height=100)
+        self.frame = ctk.CTkFrame(self.parent, fg_color=("#dbdbdb", "#2b2b2b"), corner_radius=15, width=280, height=100)
         self.frame.place(relx=0.5, rely=0.5, anchor="center")
         self.frame.pack_propagate(False)
         
         inner_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
         inner_frame.pack(expand=True, fill="both", padx=20, pady=20)
         
-        self.spinner_label = ctk.CTkLabel(inner_frame, text="◐", font=ctk.CTkFont(size=30), text_color="#4CAF50")
+        self.spinner_label = ctk.CTkLabel(inner_frame, text="◐", font=ctk.CTkFont(size=30), text_color="#3498db")
         self.spinner_label.pack(pady=(0, 10))
         
-        self.label = ctk.CTkLabel(inner_frame, text=self.text, font=ctk.CTkFont(size=12), text_color="#888888")
+        self.label = ctk.CTkLabel(inner_frame, text=self.text, font=ctk.CTkFont(size=12), text_color=("gray30", "#888888"))
         self.label.pack()
         
         self._animate_spinner()

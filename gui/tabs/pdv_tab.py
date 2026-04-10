@@ -32,12 +32,12 @@ class PDVMonitorTab:
     
     def _build_ui(self):
         # Header Pro
-        self.header = ctk.CTkFrame(self.frame, height=50, corner_radius=10, fg_color="#2b2b2b")
+        self.header = ctk.CTkFrame(self.frame, height=50, corner_radius=10, fg_color=("#dbdbdb", "#2b2b2b"))
         self.header.pack(side="top", fill="x", padx=10, pady=(5, 10))
         self.header.pack_propagate(False)
         
         ctk.CTkLabel(self.header, text="📊 Atividade de PDVs - webPostoPay",
-                     font=ctk.CTkFont(size=14, weight="bold"), text_color="#4CAF50").pack(side="left", padx=15)
+                     font=ctk.CTkFont(size=14, weight="bold"), text_color="#3498db").pack(side="left", padx=15)
         
         btn_frame = ctk.CTkFrame(self.header, fg_color="transparent")
         btn_frame.pack(side="right", padx=10)
@@ -51,9 +51,10 @@ class PDVMonitorTab:
         
         style = ttk.Style()
         style.theme_use('clam')
+        # Ajuste adaptativo para o Treeview (Ttk é limitado, usamos cores neutras)
         style.configure("Treeview", background="#2b2b2b", foreground="white", fieldbackground="#2b2b2b", rowheight=32, borderwidth=0)
         style.configure("Treeview.Heading", background="#3c3c3c", foreground="white", font=("Segoe UI", 10, "bold"), borderwidth=0)
-        style.map('Treeview', background=[('selected', '#4CAF50')])
+        style.map('Treeview', background=[('selected', '#3498db')])
         
         self.tree = ttk.Treeview(table_container, columns=("horario", "codigo", "nome", "id_interno", "tipo", "status"),
                                   show="headings")
@@ -77,7 +78,7 @@ class PDVMonitorTab:
         self.status_label = ctk.CTkLabel(self.status_bar, text="🟢 Monitorando atividade...", text_color="gray", font=ctk.CTkFont(size=11))
         self.status_label.pack(side="left")
         
-        self.stats_label = ctk.CTkLabel(self.status_bar, text="PDVs Ativos: 0", text_color="#4CAF50", font=ctk.CTkFont(size=11, weight="bold"))
+        self.stats_label = ctk.CTkLabel(self.status_bar, text="PDVs Ativos: 0", text_color="#3498db", font=ctk.CTkFont(size=11, weight="bold"))
         self.stats_label.pack(side="right")
     
     def _iniciar_monitoramento(self):
@@ -96,7 +97,7 @@ class PDVMonitorTab:
     def _identificar_todos_pdvs(self):
         def thread_identify():
             try:
-                pasta_log = self.app.entry.get().strip() or DEFAULT_ROOT
+                pasta_log = self.app.settings.get("last_folder") or DEFAULT_ROOT
                 if not pasta_log: return
                 
                 pdvs, _ = identificar_todos_pdvs_por_log(pasta_log)

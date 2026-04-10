@@ -28,6 +28,7 @@ from gui.tabs.log_tab import LogTab
 from gui.tabs.pdv_tab import PDVMonitorTab
 from gui.tabs.settings_tab import SettingsTab
 from gui.managers.global_search import GlobalSearch
+from gui.components.status_bar import StatusBar
 
 class FolderWatcher(threading.Thread):
     def __init__(self, app: "App", root_dir: str):
@@ -49,7 +50,11 @@ class FolderWatcher(threading.Thread):
     def _scan_and_open(self, initial=False):
         try:
             latest_map = find_latest_by_service(self.root_dir)
-            for svc, path in latest_map.items():
+            
+            # Ordenação Alfabética (conforme solicitado pelo usuário)
+            ordered_items = sorted(latest_map.items())
+            
+            for svc, path in ordered_items:
                 prev = self.latest_by_service.get(svc)
                 if prev is None:
                     self.latest_by_service[svc] = path
@@ -98,40 +103,44 @@ class App:
         self.root.minsize(1000, 700)
 
     def _setup_layout(self):
-        # Sidebar
-        self.sidebar = Sidebar(self.root, on_change_callback=self._on_nav_change)
-        self.sidebar.pack(side="left", fill="y")
-        
-        # Main Container (Right Side)
+        # 1. Primeiro definimos o Main Container (mas não empacotamos ainda para respeitar a ordem)
         self.main_container = ctk.CTkFrame(self.root, corner_radius=0, fg_color="transparent")
-        self.main_container.pack(side="right", fill="both", expand=True)
+        
+        # 2. Barra de Status (Garante a base total)
+        self.status_bar = StatusBar(self.root)
+        self.status_bar.pack(side="bottom", fill="x")
+        
+        # 3. Initialize Views
+        self.views["dashboard"] = DashboardTab(self)
+        self.views["pdvs"] = PDVMonitorTab(self)
+        self.views["settings"] = SettingsTab(self)
+        
+        # 4. Log Container
+        self.log_container = ctk.CTkTabview(self.main_container)
+        self.views["logs"] = self.log_container
         
         # Top Header (Contextual)
         self.header = ctk.CTkFrame(self.main_container, height=60, corner_radius=0)
         self.header.pack(side="top", fill="x")
         self.header.pack_propagate(False)
-        
-        self.header_title = ctk.CTkLabel(self.header, text="Dashboard", font=ctk.CTkFont(size=18, weight="bold"))
-        self.header_title.pack(side="left", padx=20)
-        
-        # Folder Entry in Header
-        self.entry = ctk.CTkEntry(self.header, width=400, height=32, placeholder_text="Caminho da pasta LOG")
-        self.entry.pack(side="right", padx=10)
-        self.entry.insert(0, self.settings.get("last_folder") or DEFAULT_ROOT)
-        
-        ctk.CTkButton(self.header, text="📂", width=35, height=32, command=self._choose_root).pack(side="right", padx=5)
 
-        # Content Area
-        self.content_area = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.content_area.pack(fill="both", expand=True, padx=10, pady=10)
+        # 1. Botão de Toggle (Menu Hambúrguer)
+        self.menu_btn = ctk.CTkButton(self.header, text="☰", width=40, height=40,
+                                      fg_color="transparent", hover_color=("#dbdbdb", "#333333"),
+                                      text_color=("#3498db"), font=ctk.CTkFont(size=22),
+                                      command=self._toggle_sidebar)
+        self.menu_btn.pack(side="left", padx=10)
         
-        # Initialize Views
-        self.views["dashboard"] = DashboardTab(self)
-        self.views["pdvs"] = PDVMonitorTab(self)
-        self.views["settings"] = SettingsTab(self)
+        # 2. Título da Aba
+        self.header_title = ctk.CTkLabel(self.header, text="Dashboard", font=ctk.CTkFont(size=18, weight="bold"))
+        self.header_title.pack(side="left", padx=10)
+
+        # Agora sim inicializamos o Sidebar (depois de ter views e cabeçalho prontos)
+        self.sidebar = Sidebar(self.root, on_change_callback=self._on_nav_change)
+        self.sidebar.pack(side="left", fill="y")
         
-        self.log_container = ctk.CTkTabview(self.content_area)
-        self.views["logs"] = self.log_container
+        # Agore empacotamos o Main Container por último para preencher o resto
+        self.main_container.pack(side="left", fill="both", expand=True)
         
         # Binds Globais
         self.root.bind("<Control-Shift-F>", lambda e: self._open_global_search())
@@ -139,6 +148,12 @@ class App:
 
     def _open_global_search(self):
         GlobalSearch(self)
+
+    def _toggle_sidebar(self):
+        if self.sidebar.winfo_ismapped():
+            self.sidebar.pack_forget()
+        else:
+            self.sidebar.pack(side="left", fill="y", before=self.main_container)
 
     def _on_nav_change(self, view_id):
         # Esconde todas as views
@@ -148,13 +163,13 @@ class App:
             else:
                 v.pack_forget()
         
-        # Mostra a selecionada
+        # Mostra a selecionada com padding para ficar elegante
         target = self.views.get(view_id)
         if target:
             if hasattr(target, 'frame'):
-                target.frame.pack(fill="both", expand=True)
+                target.frame.pack(fill="both", expand=True, padx=10, pady=10)
             else:
-                target.pack(fill="both", expand=True)
+                target.pack(fill="both", expand=True, padx=10, pady=10)
             
             # Atualiza título do header
             titles = {"dashboard": "Dashboard", "logs": "Monitoramento de Logs", "pdvs": "Status de PDVs", "settings": "Configurações"}
@@ -172,19 +187,20 @@ class App:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _choose_root(self):
-        path = filedialog.askdirectory(initialdir=self.entry.get())
+        current = self.settings.get("last_folder") or DEFAULT_ROOT
+        path = filedialog.askdirectory(initialdir=current)
         if path:
-            self.entry.delete(0, "end")
-            self.entry.insert(0, path)
             self.settings.set("last_folder", path)
             self._restart_watcher()
+            # Se a aba de configurações estiver aberta, ela precisará ser atualizada
+            event_bus.emit("navigate", "settings") 
 
     def _restart_watcher(self):
         self._stop_watcher()
         self._start_watcher()
 
     def _start_watcher(self):
-        root_dir = self.entry.get().strip() or DEFAULT_ROOT
+        root_dir = self.settings.get("last_folder") or DEFAULT_ROOT
         self.watcher = FolderWatcher(self, root_dir)
         self.watcher.start()
 
@@ -221,27 +237,31 @@ class App:
         if not os.path.isfile(filepath): return
         svc = service_from_path(filepath)
         
-        if filepath in self.open_tabs:
+        # Garante que não tenha tab duplicada para o mesmo serviço
+        try:
+            self.log_container.tab(svc)
+            # Se encontrou, apenas foca nela
             self.log_container.set(svc)
             return
+        except:
+            pass
 
-        # Garante que não tenha tab duplicada para o mesmo serviço
-        existing = self.tab_by_service.get(svc)
-        if existing: self._close_log(existing)
-
+        # Se não existe, cria no container
         self.log_container.add(svc)
-        tab = LogTab(self, filepath)
+        tab_frame = self.log_container.tab(svc)
         
-        # Injeta o frame no tabview (hack necessário no CTkTabview para frames custom)
-        for name, frame in list(self.log_container._tab_dict.items()):
-            if name == svc:
-                frame.destroy()
-                self.log_container._tab_dict[name] = tab.frame
-                break
+        # Inicializa o LogTab dentro dessa aba oficial
+        tab = LogTab(self, filepath, tab_frame)
         
         self.open_tabs[filepath] = tab
         self.tab_by_service[svc] = filepath
         event_bus.emit("log_opened", len(self.open_tabs))
+        
+        # Se split estiver ativo e container direito estiver vazio, foca nele? 
+        # Por enquanto, mantém o comportamento padrão.
+        
+        # Força o sistema a "desenhar" a aba imediatamente
+        self.root.update_idletasks()
 
     def _close_log(self, filepath: str):
         tab = self.open_tabs.pop(filepath, None)
@@ -250,8 +270,10 @@ class App:
             svc = service_from_path(filepath)
             if self.tab_by_service.get(svc) == filepath:
                 del self.tab_by_service[svc]
+            
             try: self.log_container.delete(svc)
             except: pass
+            
             event_bus.emit("log_opened", len(self.open_tabs))
 
     def _restart_all_services(self):

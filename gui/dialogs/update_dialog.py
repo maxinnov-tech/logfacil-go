@@ -104,7 +104,7 @@ class UpdateDialog(ctk.CTkToplevel):
     
     def _resultado(self, tem_update: bool, versao: str):
         if tem_update:
-            self.lbl_nova.configure(text=f"✅ Nova versão disponível: {versao}", text_color="#4CAF50")
+            self.lbl_nova.configure(text=f"✅ Nova versão disponível: {versao}", text_color="#3498db")
             self.txt_notas.configure(state="normal")
             self.txt_notas.delete("1.0", "end")
             self.txt_notas.insert("1.0", self.updater.release_notes or "Sem notas disponíveis.")
@@ -112,7 +112,7 @@ class UpdateDialog(ctk.CTkToplevel):
             self.btn_acao.configure(text="⬇️ Baixar Atualização", command=self._baixar, state="normal")
             self.lbl_status.configure(text="Pronto para baixar!")
         else:
-            self.lbl_nova.configure(text="✅ Você já está na versão mais recente!", text_color="#4CAF50")
+            self.lbl_nova.configure(text="✅ Você já está na versão mais recente!", text_color="#3498db")
             self.txt_notas.configure(state="normal")
             self.txt_notas.delete("1.0", "end")
             self.txt_notas.insert("1.0", "Seu LogFácil está atualizado.")

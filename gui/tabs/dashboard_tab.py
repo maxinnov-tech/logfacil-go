@@ -27,7 +27,7 @@ class DashboardTab:
         
         ctk.CTkLabel(welcome_frame, text="Bem-vindo ao LogFácil Pro", 
                      font=ctk.CTkFont(size=28, weight="bold"),
-                     text_color="#4CAF50").pack(anchor="w")
+                     text_color="#3498db").pack(anchor="w")
         
         ctk.CTkLabel(welcome_frame, text=f"Versão {VERSION} • Monitoramento Centralizado de Serviços", 
                      font=ctk.CTkFont(size=14),
@@ -37,19 +37,19 @@ class DashboardTab:
         stats_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
         stats_frame.pack(fill="x", padx=40, pady=20)
         
-        self.card_logs = self._create_stat_card(stats_frame, "Logs Ativos", "0", "#3498db")
+        self.card_logs = self._create_stat_card(stats_frame, "Logs Ativos", "0", "#4dabf7")
         self.card_logs.grid(row=0, column=0, padx=(0, 20), sticky="nsew")
         
-        self.card_pdvs = self._create_stat_card(stats_frame, "PDVs Detectados", "0", "#9b59b6")
+        self.card_pdvs = self._create_stat_card(stats_frame, "PDVs Detectados", "0", "#da77f2")
         self.card_pdvs.grid(row=0, column=1, padx=20, sticky="nsew")
         
-        self.card_status = self._create_stat_card(stats_frame, "Status Sistema", "Operacional", "#2ecc71")
+        self.card_status = self._create_stat_card(stats_frame, "Status Sistema", "Operacional", "#51cf66")
         self.card_status.grid(row=0, column=2, padx=20, sticky="nsew")
         
         stats_frame.grid_columnconfigure((0, 1, 2), weight=1)
         
         # Atalhos Rápidos
-        quick_frame = ctk.CTkFrame(self.frame, fg_color="#2b2b2b", corner_radius=15)
+        quick_frame = ctk.CTkFrame(self.frame, fg_color=("#dbdbdb", "#2b2b2b"), corner_radius=15)
         quick_frame.pack(fill="x", padx=40, pady=20)
         
         ctk.CTkLabel(quick_frame, text="Atalhos Rápidos", font=ctk.CTkFont(size=16, weight="bold")).pack(padx=20, pady=(15, 10), anchor="w")
@@ -62,7 +62,9 @@ class DashboardTab:
         ctk.CTkButton(btn_container, text="⚙️ Configurações", command=lambda: event_bus.emit("navigate", "settings"), fg_color="#555", width=180, height=40).pack(side="left", padx=10)
 
     def _create_stat_card(self, parent, title, value, color):
-        card = ctk.CTkFrame(parent, height=120, corner_radius=12)
+        card = ctk.CTkFrame(parent, height=130, corner_radius=15, 
+                            border_width=1, border_color=("#dbdbdb", "#333333"),
+                            fg_color=("#f8f9fa", "#252525"))
         card.pack_propagate(False)
         
         ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=13), text_color="gray").pack(pady=(15, 0))

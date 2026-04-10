@@ -1,14 +1,14 @@
 """
 Arquivo: gui/tabs/settings_tab.py
 Descrição: Guia (Tab) Pro de Configurações do LogFácil.
-Oferece controle centralizado sobre a aparência do sistema, comportamento
-de monitoramento e preferências de visualização, tudo salvo permanentemente.
+Implementa o conceito de "Configurações Vivas": qualquer alteração nos sliders
+ou seletores é aplicada e salva instantaneamente no disco.
 """
 import customtkinter as ctk
 from core.logger import logger
 
 class SettingsTab:
-    """Painel de Configurações Pro."""
+    """Painel de Configurações Pro com Auto-Save."""
     
     def __init__(self, app):
         self.app = app
@@ -42,19 +42,23 @@ class SettingsTab:
         self._add_setting_row(mon_group, "Intervalo de scan (seg):", 
                              self._create_scan_slider, row=0)
 
-        # Botão Salvar Geral
-        self.save_btn = ctk.CTkButton(container, text="💾 Salvar Todas as Alterações", 
-                                      command=self._save_all, height=45, width=280,
-                                      font=ctk.CTkFont(size=15, weight="bold"),
-                                      fg_color="#2ecc71", hover_color="#27ae60")
-        self.save_btn.pack(pady=40, anchor="center")
+        # --- Grupo: Diretório ---
+        dir_group = self._create_group(container, "📍 Diretório do Sistema")
+        
+        # Pasta de Logs
+        self._add_setting_row(dir_group, "Pasta raiz de LOGs:", 
+                             self._create_folder_selector, row=0)
+
+        # Footer informativo (já que não tem botão de salvar)
+        ctk.CTkLabel(container, text="✨ Todas as alterações são salvas e aplicadas automaticamente.",
+                     font=ctk.CTkFont(size=12, slant="italic"), text_color="gray").pack(pady=40)
 
     def _create_group(self, parent, title):
-        frame = ctk.CTkFrame(parent, fg_color="#2b2b2b", corner_radius=15)
+        frame = ctk.CTkFrame(parent, fg_color=("#dbdbdb", "#2b2b2b"), corner_radius=15)
         frame.pack(fill="x", pady=10, padx=0)
         
         ctk.CTkLabel(frame, text=title, font=ctk.CTkFont(size=14, weight="bold"), 
-                     text_color="#4CAF50").pack(anchor="w", padx=20, pady=(15, 10))
+                     text_color="#3498db").pack(anchor="w", padx=20, pady=(15, 10))
         
         content = ctk.CTkFrame(frame, fg_color="transparent")
         content.pack(fill="x", padx=20, pady=(0, 15))
@@ -74,7 +78,7 @@ class SettingsTab:
         self.font_lbl.pack(side="right", padx=(10, 0))
         
         self.font_slider = ctk.CTkSlider(frame, from_=8, to=24, number_of_steps=16, width=200,
-                                         command=lambda v: self.font_lbl.configure(text=str(int(v))))
+                                         command=self._on_font_change)
         self.font_slider.set(current)
         self.font_slider.pack(side="right")
         return frame
@@ -82,7 +86,10 @@ class SettingsTab:
     def _create_theme_switch(self, parent):
         current = self.settings.get("appearance_mode", "dark")
         self.theme_var = ctk.StringVar(value=current)
-        return ctk.CTkSegmentedButton(parent, values=["light", "dark"], variable=self.theme_var, width=200)
+        btn = ctk.CTkSegmentedButton(parent, values=["light", "dark"], 
+                                     variable=self.theme_var, width=200,
+                                     command=self._on_theme_change)
+        return btn
 
     def _create_scan_slider(self, parent):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -91,31 +98,38 @@ class SettingsTab:
         self.scan_lbl.pack(side="right", padx=(10, 0))
         
         self.scan_slider = ctk.CTkSlider(frame, from_=0.5, to=10.0, number_of_steps=19, width=200,
-                                         command=lambda v: self.scan_lbl.configure(text=f"{round(float(v),1)}s"))
+                                         command=self._on_scan_change)
         self.scan_slider.set(current)
         self.scan_slider.pack(side="right")
         return frame
 
-    def _save_all(self):
-        try:
-            # Coleta valores
-            new_font = int(self.font_slider.get())
-            new_theme = self.theme_var.get()
-            new_scan = round(float(self.scan_slider.get()), 1)
-            
-            # Salva no manager
-            self.settings.set("font_size", new_font)
-            self.settings.set("appearance_mode", new_theme)
-            self.settings.set("scan_interval", new_scan)
-            
-            # Aplica mudanças imediatas
-            ctk.set_appearance_mode(new_theme)
-            self.app.apply_settings()
-            
-            # Feedback
-            self.save_btn.configure(text="✅ Configurações Salvas!", fg_color="#27ae60")
-            self.frame.after(2000, lambda: self.save_btn.configure(text="💾 Salvar Todas as Alterações", fg_color="#2ecc71"))
-            
-            logger.info("Configurações atualizadas pelo usuário.")
-        except Exception as e:
-            logger.error(f"Erro ao salvar configurações: {e}")
+    def _create_folder_selector(self, parent):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        current = self.settings.get("last_folder") or "Não configurado"
+        
+        # Label truncada se for muito longa
+        display_path = (current[:40] + '...') if len(current) > 40 else current
+        self.path_lbl = ctk.CTkLabel(frame, text=display_path, font=ctk.CTkFont(size=11), text_color="gray")
+        self.path_lbl.pack(side="left", padx=(0, 10))
+        
+        ctk.CTkButton(frame, text="Alterar Pasta", width=120, height=30,
+                      command=self.app._choose_root).pack(side="right")
+        return frame
+
+    # --- Callbacks de Auto-Save ---
+
+    def _on_font_change(self, value):
+        val = int(value)
+        self.font_lbl.configure(text=str(val))
+        self.settings.set("font_size", val)
+        self.app.apply_settings()
+
+    def _on_theme_change(self, value):
+        self.settings.set("appearance_mode", value)
+        ctk.set_appearance_mode(value)
+        logger.info(f"Tema alterado para: {value}")
+
+    def _on_scan_change(self, value):
+        val = round(float(value), 1)
+        self.scan_lbl.configure(text=f"{val}s")
+        self.settings.set("scan_interval", val)
