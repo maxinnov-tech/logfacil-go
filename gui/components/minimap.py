@@ -67,6 +67,17 @@ class LogMinimap(tk.Canvas):
                 self._draw_tag_marks("WARN", self.colors["WARN"], total_lines, height)
                 if self.text_widget.tag_ranges("CUSTOM_HL"):
                     self._draw_tag_marks("CUSTOM_HL", self.colors["CUSTOM_HL"], total_lines, height)
+                
+                # Procura por marcadores customizados conhecidos dinamicamente a partir das tags do widget raiz
+                for tag in self.text_widget.tag_names():
+                    if tag not in ["ERROR", "WARN", "INFO", "DEBUG", "CUSTOM_HL", "sel"]:
+                        # Tenta pegar a cor da tag (fg)
+                        try:
+                            # tag_cget pode retornar exceção se a opção não existir, mas "foreground" geralmente existe pra essas
+                            fg = self.text_widget.tag_cget(tag, "foreground")
+                            if fg and self.text_widget.tag_ranges(tag):
+                                self._draw_tag_marks(tag, fg, total_lines, height)
+                        except: pass
         except Exception as e:
             # Silencioso para não travar a UI
             pass

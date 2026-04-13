@@ -46,6 +46,17 @@ class LogTab:
             "bg_header": ("#dbdbdb", "#212121"),
             "highlight_color": "#4dabf7" # Azul Profissional suave
         }
+        
+        # Marcadores de Erro Customizados em formato de texto.
+        # COMO ADICIONAR MAIS MARCADORES:
+        # Adicione uma nova linha com "SEU TEXTO EXACTO": "#COR_EM_HEXADECIMAL"
+        # O sistema irá destacar apenas o texto, ideal para encontrar códigos de retorno.
+        self.text_markers = {
+            "Retorno: 500": "#ffd93d", # Amarelo Pastel
+            "Retorno: 404": "#ffba08", # Laranja
+            "Exception": "#ff6b6b"     # Vermelho Pastel
+        }
+        
         self.custom_highlight_term = ""
         self.custom_highlight_color = self.colors["highlight_color"]
         
@@ -141,7 +152,7 @@ class LogTab:
         self.minimap.pack(side="right", fill="y", padx=(5, 0))
         
         # Bindings
-        self.text.bind("<MouseWheel>", lambda e: self._on_scroll())
+        self.text.bind("<MouseWheel>", lambda e: self._on_scroll(e))
         self.text.bind("<Control-f>", lambda e: self._show_search())
         self.text.bind("<F2>", lambda e: self.toggle_follow())
         
@@ -153,11 +164,19 @@ class LogTab:
             # Pula configurações que não são cores de nível de log
             if level in ["ERROR", "WARN", "INFO", "DEBUG"]:
                 self.text.tag_config(level, foreground=color)
+        
+        # Configura as tags dos marcadores customizados
+        for marker, color in self.text_markers.items():
+            self.text.tag_config(marker, foreground=color)
 
-    def _apply_highlighting(self, start_pos, end_pos):
-        """Aplica cores dinamicamente nas linhas de log."""
+    def _apply_highlighting(self, start_pos, end_pos, data=""):
+        """Aplica cores dinamicamente nas linhas de log. (Otimizado)"""
         try:
+            # OPT: O data é o bloco de texto inserido. Se não for vazio, validamos
+            # a existência do termo antes de invocar a busca do Tkinter (custa CPU).
             for level in ["ERROR", "WARN", "INFO", "DEBUG"]:
+                if data and level not in data:
+                    continue
                 pos = start_pos
                 while True:
                     pos = self.text.search(level, pos, stopindex=end_pos, nocase=False)
@@ -166,16 +185,31 @@ class LogTab:
                     line_end = f"{pos.split('.')[0]}.end"
                     self.text.tag_add(level, line_start, line_end)
                     pos = line_end
+                    
+            # Aplica marcadores de texto (somente o texto é destacado)
+            for marker in self.text_markers:
+                if data and marker not in data:
+                    continue
+                pos = start_pos
+                while True:
+                    pos = self.text.search(marker, pos, stopindex=end_pos, nocase=False)
+                    if not pos or pos == "": break
+                    line_end = f"{pos}+{len(marker)}c"
+                    self.text.tag_add(marker, pos, line_end)
+                    pos = line_end
             
             # Aplica realce customizado
             if self.custom_highlight_term:
-                pos = start_pos
-                while True:
-                    pos = self.text.search(self.custom_highlight_term, pos, stopindex=end_pos, nocase=True)
-                    if not pos or pos == "": break
-                    line_end = f"{pos}+{len(self.custom_highlight_term)}c"
-                    self.text.tag_add("CUSTOM_HL", pos, line_end)
-                    pos = line_end
+                if data and self.custom_highlight_term.lower() not in data.lower():
+                    pass # Otimização de performance: pula se o termo não existe neste bloco
+                else:
+                    pos = start_pos
+                    while True:
+                        pos = self.text.search(self.custom_highlight_term, pos, stopindex=end_pos, nocase=True)
+                        if not pos or pos == "": break
+                        line_end = f"{pos}+{len(self.custom_highlight_term)}c"
+                        self.text.tag_add("CUSTOM_HL", pos, line_end)
+                        pos = line_end
         except Exception as e:
             logger.debug(f"Erro no realce de sintaxe: {e}")
 
@@ -239,7 +273,7 @@ class LogTab:
     def _schedule_drain(self):
         if not self.stop_event.is_set():
             self._drain()
-            self.text.after(80, self._schedule_drain)
+            self.text.after(200, self._schedule_drain) # OPT: Aumentado de 80ms para 200ms para poupar CPU
 
     def _drain(self):
         agg = []
@@ -255,7 +289,7 @@ class LogTab:
         self.text.insert("end", data)
         end_idx = self.text.index("end-1c")
         
-        self._apply_highlighting(start_idx, end_idx)
+        self._apply_highlighting(start_idx, end_idx, data)
         
         self.appended_since_trim += data.count("\n")
         if self.appended_since_trim >= TRIM_BATCH:
@@ -278,10 +312,9 @@ class LogTab:
     def update_settings(self, settings):
         self.text.configure(font=ctk.CTkFont(family="Consolas", size=settings.get("font_size", 13)))
 
-    def _on_scroll(self):
-        # Auto-pause ao subir o scroll
-        visible = self.text.yview()
-        if visible[1] < 0.95 and self.follow:
+    def _on_scroll(self, event=None):
+        # Auto-pause ao subir o scroll na rodinha do mouse (scroll up == event.delta > 0 no Windows)
+        if event and self.follow and event.delta > 0:
             self.toggle_follow()
 
     def _build_context_menu(self):
