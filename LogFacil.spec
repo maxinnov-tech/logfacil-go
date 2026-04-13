@@ -41,6 +41,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False, # Oculta a janela preta
+    icon='assets/logo.ico',
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
