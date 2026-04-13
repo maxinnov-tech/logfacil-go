@@ -5,6 +5,7 @@ Fornece um resumo visual da atividade de monitoramento, atalhos rápidos
 e estatísticas em tempo real sobre os serviços detectados.
 """
 import customtkinter as ctk
+from gui.utils.icon_manager import icons
 from core.config import VERSION
 from core.event_bus import event_bus
 
@@ -57,9 +58,9 @@ class DashboardTab:
         btn_container = ctk.CTkFrame(quick_frame, fg_color="transparent")
         btn_container.pack(fill="x", padx=20, pady=(0, 15))
         
-        ctk.CTkButton(btn_container, text="📂 Escolher Nova Pasta", command=self.app._choose_root, width=180, height=40).pack(side="left", padx=(0, 10))
-        ctk.CTkButton(btn_container, text="🔄 Reiniciar Todos", command=self.app._restart_all_services, fg_color="#f0ad4e", hover_color="#eea236", width=180, height=40).pack(side="left", padx=10)
-        ctk.CTkButton(btn_container, text="⚙️ Configurações", command=lambda: event_bus.emit("navigate", "settings"), fg_color="#555", width=180, height=40).pack(side="left", padx=10)
+        ctk.CTkButton(btn_container, text="Escolher Nova Pasta", compound="left", image=icons.get_icon("opened-folder"), command=self.app._choose_root, width=180, height=40).pack(side="left", padx=(0, 10))
+        ctk.CTkButton(btn_container, text="Reiniciar Todos", compound="left", image=icons.get_icon("restart"), command=self.app._restart_all_services, fg_color="#f0ad4e", hover_color="#eea236", width=180, height=40).pack(side="left", padx=10)
+        ctk.CTkButton(btn_container, text="Configurações", compound="left", image=icons.get_icon("settings"), command=lambda: event_bus.emit("navigate", "settings"), fg_color="#555", width=180, height=40).pack(side="left", padx=10)
 
     def _create_stat_card(self, parent, title, value, color):
         card = ctk.CTkFrame(parent, height=130, corner_radius=15, 

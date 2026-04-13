@@ -5,6 +5,7 @@ Permite pesquisar termos em todas as abas de log abertas simultaneamente,
 facilitando o rastreamento de erros que cruzam múltiplos serviços.
 """
 import customtkinter as ctk
+from gui.utils.icon_manager import icons
 
 class GlobalSearch(ctk.CTkToplevel):
     """Diálogo de Busca Global Pro."""
@@ -30,7 +31,7 @@ class GlobalSearch(ctk.CTkToplevel):
         self.entry.pack(side="left", padx=20, pady=20)
         self.entry.bind("<Return>", lambda e: self._do_search())
         
-        ctk.CTkButton(header, text="🔍 Buscar", width=100, command=self._do_search,
+        ctk.CTkButton(header, text="Buscar", compound="left", image=icons.get_icon("search"), width=100, command=self._do_search,
                       fg_color="#3498db", hover_color="#2980b9").pack(side="left", padx=5)
 
         # Results Area

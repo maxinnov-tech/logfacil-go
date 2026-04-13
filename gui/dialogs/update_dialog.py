@@ -15,6 +15,7 @@ import threading
 import subprocess
 from tkinter import messagebox
 import customtkinter as ctk
+from gui.utils.icon_manager import icons
 
 from core.github_updater import GitHubUpdater
 
@@ -48,24 +49,24 @@ class UpdateDialog(ctk.CTkToplevel):
         main = ctk.CTkFrame(self, fg_color="transparent")
         main.pack(fill="both", expand=True, padx=20, pady=20)
         
-        ctk.CTkLabel(main, text="🔄 Atualização Automática",
+        ctk.CTkLabel(main, text="Atualização Automática", compound="left", image=icons.get_icon("restart"),
                      font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(0, 15))
         
         info = ctk.CTkFrame(main)
         info.pack(fill="x", pady=5)
         
-        ctk.CTkLabel(info, text=f"📌 Versão instalada: {self.updater.current_version}",
+        ctk.CTkLabel(info, text=f"Versão instalada: {self.updater.current_version}", compound="left", image=icons.get_icon("pin"),
                      font=ctk.CTkFont(size=12)).pack(anchor="w", padx=10, pady=5)
         
-        self.lbl_nova = ctk.CTkLabel(info, text="🔍 Verificando...",
+        self.lbl_nova = ctk.CTkLabel(info, text="Verificando...", compound="left", image=icons.get_icon("search"),
                                       font=ctk.CTkFont(size=12), text_color="#FFA500")
         self.lbl_nova.pack(anchor="w", padx=10, pady=5)
         
         app_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0])
-        ctk.CTkLabel(main, text=f"📁 Pasta: {os.path.dirname(app_path)}",
+        ctk.CTkLabel(main, text=f"Pasta: {os.path.dirname(app_path)}", compound="left", image=icons.get_icon("opened-folder"),
                      font=ctk.CTkFont(size=11), text_color="#888888").pack(anchor="w", pady=5)
         
-        ctk.CTkLabel(main, text="📝 Novidades:",
+        ctk.CTkLabel(main, text="Novidades:", compound="left", image=icons.get_icon("edit"),
                      font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(15, 5))
         
         self.txt_notas = ctk.CTkTextbox(main, height=120, wrap="word")
@@ -104,15 +105,15 @@ class UpdateDialog(ctk.CTkToplevel):
     
     def _resultado(self, tem_update: bool, versao: str):
         if tem_update:
-            self.lbl_nova.configure(text=f"✅ Nova versão disponível: {versao}", text_color="#3498db")
+            self.lbl_nova.configure(text=f"Nova versão disponível: {versao}", compound="left", image=icons.get_icon("checkmark"), text_color="#3498db")
             self.txt_notas.configure(state="normal")
             self.txt_notas.delete("1.0", "end")
             self.txt_notas.insert("1.0", self.updater.release_notes or "Sem notas disponíveis.")
             self.txt_notas.configure(state="disabled")
-            self.btn_acao.configure(text="⬇️ Baixar Atualização", command=self._baixar, state="normal")
+            self.btn_acao.configure(text="Baixar Atualização", compound="left", image=icons.get_icon("download-from-cloud"), command=self._baixar, state="normal")
             self.lbl_status.configure(text="Pronto para baixar!")
         else:
-            self.lbl_nova.configure(text="✅ Você já está na versão mais recente!", text_color="#3498db")
+            self.lbl_nova.configure(text="Você já está na versão mais recente!", compound="left", image=icons.get_icon("checkmark"), text_color="#3498db")
             self.txt_notas.configure(state="normal")
             self.txt_notas.delete("1.0", "end")
             self.txt_notas.insert("1.0", "Seu LogFácil está atualizado.")
@@ -148,13 +149,13 @@ class UpdateDialog(ctk.CTkToplevel):
     
     def _download_ok(self):
         self.lbl_progresso.configure(text="100% - Download concluído!")
-        self.lbl_status.configure(text="✅ Download concluído! Pronto para instalar.")
-        self.btn_acao.configure(text="🚀 Instalar Agora", command=self._instalar, state="normal")
+        self.lbl_status.configure(text="Download concluído! Pronto para instalar.", compound="left", image=icons.get_icon("checkmark"))
+        self.btn_acao.configure(text="Instalar Agora", compound="left", image=icons.get_icon("rocket"), command=self._instalar, state="normal")
         self.btn_cancelar.configure(text="Fechar")
     
     def _download_erro(self):
-        self.lbl_status.configure(text="❌ Erro no download. Verifique sua conexão ou Firewall.")
-        self.btn_acao.configure(text="⬇️ Tentar Novamente", command=self._baixar, state="normal")
+        self.lbl_status.configure(text="Erro no download. Verifique sua conexão ou Firewall.", compound="left", image=icons.get_icon("error"))
+        self.btn_acao.configure(text="Tentar Novamente", compound="left", image=icons.get_icon("download-from-cloud"), command=self._baixar, state="normal")
     
     def _instalar(self):
         if not self.downloaded_file:

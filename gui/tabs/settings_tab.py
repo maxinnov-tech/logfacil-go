@@ -5,6 +5,7 @@ Implementa o conceito de "Configurações Vivas": qualquer alteração nos slide
 ou seletores é aplicada e salva instantaneamente no disco.
 """
 import customtkinter as ctk
+from gui.utils.icon_manager import icons
 from core.logger import logger
 
 class SettingsTab:
@@ -21,11 +22,11 @@ class SettingsTab:
         container = ctk.CTkFrame(self.frame, fg_color="transparent")
         container.pack(pady=30, padx=50, fill="both", expand=True)
         
-        ctk.CTkLabel(container, text="⚙️ Preferências do Sistema", 
+        ctk.CTkLabel(container, text="Preferências do Sistema", compound="left", image=icons.get_icon("settings"), 
                      font=ctk.CTkFont(size=24, weight="bold")).pack(anchor="w", pady=(0, 20))
         
         # --- Grupo: Visualização ---
-        vis_group = self._create_group(container, "🎨 Visualização e Estilo")
+        vis_group = self._create_group(container, "Visualização e Estilo", "paint-palette")
         
         # Tamanho da Fonte
         self._add_setting_row(vis_group, "Tamanho da fonte (Logs):", 
@@ -36,29 +37,31 @@ class SettingsTab:
                              self._create_theme_switch, row=1)
         
         # --- Grupo: Monitoramento ---
-        mon_group = self._create_group(container, "🔍 Comportamento de Monitoramento")
+        mon_group = self._create_group(container, "Comportamento de Monitoramento", "search")
         
         # Intervalo de Scan
         self._add_setting_row(mon_group, "Intervalo de scan (seg):", 
                              self._create_scan_slider, row=0)
 
         # --- Grupo: Diretório ---
-        dir_group = self._create_group(container, "📍 Diretório do Sistema")
+        dir_group = self._create_group(container, "Diretório do Sistema", "pin")
         
         # Pasta de Logs
         self._add_setting_row(dir_group, "Pasta raiz de LOGs:", 
                              self._create_folder_selector, row=0)
 
         # Footer informativo (já que não tem botão de salvar)
-        ctk.CTkLabel(container, text="✨ Todas as alterações são salvas e aplicadas automaticamente.",
+        ctk.CTkLabel(container, text="Todas as alterações são salvas e aplicadas automaticamente.", compound="left", image=icons.get_icon("star"),
                      font=ctk.CTkFont(size=12, slant="italic"), text_color="gray").pack(pady=40)
 
-    def _create_group(self, parent, title):
+    def _create_group(self, parent, title, icon_name=None):
         frame = ctk.CTkFrame(parent, fg_color=("#dbdbdb", "#2b2b2b"), corner_radius=15)
         frame.pack(fill="x", pady=10, padx=0)
         
-        ctk.CTkLabel(frame, text=title, font=ctk.CTkFont(size=14, weight="bold"), 
-                     text_color="#3498db").pack(anchor="w", padx=20, pady=(15, 10))
+        lbl = ctk.CTkLabel(frame, text=title, font=ctk.CTkFont(size=14, weight="bold"), text_color="#3498db")
+        if icon_name:
+            lbl.configure(image=icons.get_icon(icon_name), compound="left", padx=5)
+        lbl.pack(anchor="w", padx=20, pady=(15, 10))
         
         content = ctk.CTkFrame(frame, fg_color="transparent")
         content.pack(fill="x", padx=20, pady=(0, 15))

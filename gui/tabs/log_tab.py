@@ -94,7 +94,7 @@ class LogTab:
         self._dot = self.status_canvas.create_oval(2, 2, 12, 12, fill="#888888", outline="")
         self._pulse_step = 0
 
-        title_lbl = ctk.CTkLabel(info_frame, text=f"⚡ {self.service_name}",
+        title_lbl = ctk.CTkLabel(info_frame, text=f"{self.service_name}", compound="left", image=icons.get_icon("flash-on"),
                                  font=ctk.CTkFont(size=14, weight="bold"), text_color="#3498db")
         title_lbl.pack(side="left")
 
@@ -109,12 +109,12 @@ class LogTab:
         action_frame.pack(side="right", padx=10)
         
         self.btn_restart = ctk.CTkButton(action_frame, text=" Reiniciar", width=110, height=32,
-                                         image=icons.get_icon("restart", size=(16, 16)),
+                                         compound="left", image=icons.get_icon("restart", size=(16, 16)),
                                          command=self._restart_service, fg_color="#d9534f", hover_color="#c9302c")
         self.btn_restart.pack(side="right", padx=5)
         
         self.btn_follow = ctk.CTkButton(action_frame, text=" Pausar", width=110, height=32,
-                                         image=icons.get_icon("pause", size=(16, 16)),
+                                         compound="left", image=icons.get_icon("pause", size=(16, 16)),
                                          command=self.toggle_follow, fg_color="#555", hover_color="#666")
         self.btn_follow.pack(side="right", padx=5)
 
@@ -126,7 +126,7 @@ class LogTab:
         self.highlighter_bar = ctk.CTkFrame(self.frame, height=40, corner_radius=10)
         self.highlighter_bar.pack(side="top", fill="x", padx=10, pady=(0, 5))
         
-        ctk.CTkLabel(self.highlighter_bar, text="🔖 Marcador:", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(15, 5))
+        ctk.CTkLabel(self.highlighter_bar, text="Marcador:", compound="left", image=icons.get_icon("bookmark"), font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(15, 5))
         
         self.entry_highlight = ctk.CTkEntry(self.highlighter_bar, placeholder_text="Termo para destacar...", 
                                            width=250, height=28, font=ctk.CTkFont(size=12))
@@ -232,7 +232,7 @@ class LogTab:
             spinner.show()
             def task():
                 success, _ = restart_service_components(self.service_name)
-                self.frame.after(0, lambda: self.status_label.configure(text="✅ Reiniciado" if success else "⚠ Erro", text_color="green" if success else "orange"))
+                self.frame.after(0, lambda: self.status_label.configure(text="Reiniciado", compound="left", image=icons.get_icon("checkmark") if success else "⚠ Erro", text_color="green" if success else "orange"))
                 self.frame.after(0, spinner.hide)
             threading.Thread(target=task, daemon=True).start()
 
@@ -319,9 +319,9 @@ class LogTab:
 
     def _build_context_menu(self):
         m = tk.Menu(self.text, tearoff=0, bg="#2b2b2b", fg="white", activebackground="#4CAF50")
-        m.add_command(label="📋 Copiar", command=lambda: self.text.event_generate("<<Copy>>"))
-        m.add_command(label="🔍 Buscar", command=self._show_search)
-        m.add_command(label="🗑 Limpar Tela", command=lambda: [self.text.configure(state="normal"), self.text.delete("1.0", "end"), self.text.configure(state="disabled")])
+        m.add_command(label="Copiar", command=lambda: self.text.event_generate("<<Copy>>"))
+        m.add_command(label="Buscar", command=self._show_search)
+        m.add_command(label="Limpar Tela", command=lambda: [self.text.configure(state="normal"), self.text.delete("1.0", "end"), self.text.configure(state="disabled")])
         self.text.bind("<Button-3>", lambda e: m.tk_popup(e.x_root, e.y_root))
 
     # --- Métodos do Indicador de Status ---

@@ -9,6 +9,7 @@ além das chaves Case Sensitivity, garantindo excelente usabilidade para varredu
 """
 import tkinter as tk
 import customtkinter as ctk
+from gui.utils.icon_manager import icons
 
 class IncrementalSearch:
     def __init__(self, text_widget):
@@ -29,7 +30,7 @@ class IncrementalSearch:
         self.search_frame.pack(side="top", fill="x", padx=5, pady=(0, 5))
         self.search_frame.pack_propagate(False)
         
-        ctk.CTkLabel(self.search_frame, text="🔍 Buscar:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(10, 5))
+        ctk.CTkLabel(self.search_frame, text="Buscar:", compound="left", image=icons.get_icon("search"), font=ctk.CTkFont(size=12)).pack(side="left", padx=(10, 5))
         
         self.search_entry = ctk.CTkEntry(self.search_frame, width=300, placeholder_text="Digite para buscar...")
         self.search_entry.pack(side="left", padx=5)

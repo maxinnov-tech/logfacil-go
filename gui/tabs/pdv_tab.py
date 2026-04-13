@@ -8,6 +8,7 @@ import threading
 import datetime
 from tkinter import ttk, filedialog, messagebox
 import customtkinter as ctk
+from gui.utils.icon_manager import icons
 from typing import List, Tuple
 
 from core.pdv_parser import identificar_todos_pdvs_por_log
@@ -36,14 +37,14 @@ class PDVMonitorTab:
         self.header.pack(side="top", fill="x", padx=10, pady=(5, 10))
         self.header.pack_propagate(False)
         
-        ctk.CTkLabel(self.header, text="📊 Atividade de PDVs - webPostoPay",
+        ctk.CTkLabel(self.header, text="Atividade de PDVs - webPostoPay", compound="left", image=icons.get_icon("bar-chart"),
                      font=ctk.CTkFont(size=14, weight="bold"), text_color="#3498db").pack(side="left", padx=15)
         
         btn_frame = ctk.CTkFrame(self.header, fg_color="transparent")
         btn_frame.pack(side="right", padx=10)
         
-        ctk.CTkButton(btn_frame, text="🗑️ Limpar", command=self._limpar_historico, height=28, width=80).pack(side="left", padx=5)
-        ctk.CTkButton(btn_frame, text="💾 Exportar", command=self._exportar_historico, height=28, width=80, fg_color="#3498db").pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Limpar", compound="left", image=icons.get_icon("trash"), command=self._limpar_historico, height=28, width=80).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Exportar", compound="left", image=icons.get_icon("save"), command=self._exportar_historico, height=28, width=80, fg_color="#3498db").pack(side="left", padx=5)
         
         # Tabela (Treeview)
         table_container = ctk.CTkFrame(self.frame, corner_radius=12)

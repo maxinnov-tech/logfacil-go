@@ -105,6 +105,11 @@ class App:
         self.root.title(f"LogFácil Pro v{VERSION}")
         self.root.geometry("1400x850")
         self.root.minsize(1000, 700)
+        
+        try:
+            self.root.iconbitmap(icons.resource_path("assets/logo.ico"))
+        except Exception as e:
+            logger.error(f"Erro ao definir icone: {e}")
 
     def _setup_layout(self):
         # ============================================================

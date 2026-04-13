@@ -1,0 +1,42 @@
+gui\components\navigation.py:93 text="",                    # Apenas ícone — sem texto
+gui\components\search.py:31 ctk.CTkLabel(self.search_frame, text="🔍 Buscar:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(10, 5))
+gui\components\search.py:40 btn_prev = ctk.CTkButton(self.search_frame, text="▲", width=30, height=30, command=self.search_prev)
+gui\components\search.py:43 btn_next = ctk.CTkButton(self.search_frame, text="▼", width=30, height=30, command=self.search_next)
+gui\components\search.py:49 btn_close = ctk.CTkButton(self.search_frame, text="✕", width=30, height=30, fg_color="#d9534f",
+gui\components\spinner.py:5 ("◐", "◓", "◑", "◒") e exibir texto pontilhado ("...", etc) que transmitem ao usuário
+gui\components\spinner.py:38 self.spinner_label = ctk.CTkLabel(inner_frame, text="◐", font=ctk.CTkFont(size=30), text_color="#3498db")
+gui\components\spinner.py:51 chars = ["◐", "◓", "◑", "◒"]
+gui\dialogs\update_dialog.py:50 ctk.CTkLabel(main, text="🔄 Atualização Automática",
+gui\dialogs\update_dialog.py:56 ctk.CTkLabel(info, text=f"📌 Versão instalada: {self.updater.current_version}",
+gui\dialogs\update_dialog.py:59 self.lbl_nova = ctk.CTkLabel(info, text="🔍 Verificando...",
+gui\dialogs\update_dialog.py:64 ctk.CTkLabel(main, text=f"📁 Pasta: {os.path.dirname(app_path)}",
+gui\dialogs\update_dialog.py:67 ctk.CTkLabel(main, text="📝 Novidades:",
+gui\dialogs\update_dialog.py:106 self.lbl_nova.configure(text=f"✅ Nova versão disponível: {versao}", text_color="#3498db")
+gui\dialogs\update_dialog.py:111 self.btn_acao.configure(text="⬇️ Baixar Atualização", command=self._baixar, state="normal")
+gui\dialogs\update_dialog.py:114 self.lbl_nova.configure(text="✅ Você já está na versão mais recente!", text_color="#3498db")
+gui\dialogs\update_dialog.py:150 self.lbl_status.configure(text="✅ Download concluído! Pronto para instalar.")
+gui\dialogs\update_dialog.py:151 self.btn_acao.configure(text="🚀 Instalar Agora", command=self._instalar, state="normal")
+gui\dialogs\update_dialog.py:155 self.lbl_status.configure(text="❌ Erro no download. Verifique sua conexão ou Firewall.")
+gui\dialogs\update_dialog.py:156 self.btn_acao.configure(text="⬇️ Tentar Novamente", command=self._baixar, state="normal")
+gui\managers\global_search.py:14 self.title("🔍 Busca Global - LogFácil Pro")
+gui\managers\global_search.py:32 ctk.CTkButton(header, text="🔍 Buscar", width=100, command=self._do_search,
+gui\managers\update_manager.py:64 f"✅ Você já está na versão mais recente!\n\nVersão: {CURRENT_VERSION}"
+gui\tabs\dashboard_tab.py:31 ctk.CTkLabel(welcome_frame, text=f"Versão {VERSION} • Monitoramento Centralizado de Serviços",
+gui\tabs\dashboard_tab.py:59 ctk.CTkButton(btn_container, text="📂 Escolher Nova Pasta", command=self.app._choose_root, width=180, height=40).pack(side="left", padx=(0, 10))
+gui\tabs\dashboard_tab.py:60 ctk.CTkButton(btn_container, text="🔄 Reiniciar Todos", command=self.app._restart_all_services, fg_color="#f0ad4e", hover_color="#eea236", width=180, height=40).pack(side="left", padx=10)
+gui\tabs\dashboard_tab.py:61 ctk.CTkButton(btn_container, text="⚙️ Configurações", command=lambda: event_bus.emit("navigate", "settings"), fg_color="#555", width=180, height=40).pack(side="left", padx=10)
+gui\tabs\log_tab.py:96 title_lbl = ctk.CTkLabel(info_frame, text=f"⚡ {self.service_name}",
+gui\tabs\log_tab.py:128 ctk.CTkLabel(self.highlighter_bar, text="🔖 Marcador:", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(15, 5))
+gui\tabs\log_tab.py:234 self.frame.after(0, lambda: self.status_label.configure(text="✅ Reiniciado" if success else "⚠ Erro", text_color="green" if success else "orange"))
+gui\tabs\log_tab.py:321 m.add_command(label="📋 Copiar", command=lambda: self.text.event_generate("<<Copy>>"))
+gui\tabs\log_tab.py:322 m.add_command(label="🔍 Buscar", command=self._show_search)
+gui\tabs\log_tab.py:323 m.add_command(label="🗑 Limpar Tela", command=lambda: [self.text.configure(state="normal"), self.text.delete("1.0", "end"), self.text.configure(state="disabled")])
+gui\tabs\pdv_tab.py:38 ctk.CTkLabel(self.header, text="📊 Atividade de PDVs - webPostoPay",
+gui\tabs\pdv_tab.py:44 ctk.CTkButton(btn_frame, text="🗑️ Limpar", command=self._limpar_historico, height=28, width=80).pack(side="left", padx=5)
+gui\tabs\pdv_tab.py:45 ctk.CTkButton(btn_frame, text="💾 Exportar", command=self._exportar_historico, height=28, width=80, fg_color="#3498db").pack(side="left", padx=5)
+gui\tabs\pdv_tab.py:77 self.status_label = ctk.CTkLabel(self.status_bar, text="🟢 Monitorando atividade...", text_color="gray", font=ctk.CTkFont(size=11))
+gui\tabs\settings_tab.py:23 ctk.CTkLabel(container, text="⚙️ Preferências do Sistema",
+gui\tabs\settings_tab.py:27 vis_group = self._create_group(container, "🎨 Visualização e Estilo")
+gui\tabs\settings_tab.py:38 mon_group = self._create_group(container, "🔍 Comportamento de Monitoramento")
+gui\tabs\settings_tab.py:45 dir_group = self._create_group(container, "📍 Diretório do Sistema")
+gui\tabs\settings_tab.py:52 ctk.CTkLabel(container, text="✨ Todas as alterações são salvas e aplicadas automaticamente.",
