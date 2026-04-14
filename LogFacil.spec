@@ -37,7 +37,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False, # Oculta a janela preta
@@ -46,5 +46,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    uac_admin=True, # Força execução como administrador (pede permissão no EXE automaticamente) 
+    uac_admin=False, # Força execução como administrador (pede permissão no EXE automaticamente) 
 )
