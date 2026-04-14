@@ -37,7 +37,7 @@ class PDVMonitorTab:
         self.header.pack(side="top", fill="x", padx=10, pady=(5, 10))
         self.header.pack_propagate(False)
         
-        ctk.CTkLabel(self.header, text="Atividade de PDVs - webPostoPay", compound="left", image=icons.get_icon("bar-chart"),
+        ctk.CTkLabel(self.header, text=" Atividade de PDVs - webPostoPay", compound="left", image=icons.get_icon("bar-chart"),
                      font=ctk.CTkFont(size=14, weight="bold"), text_color="#3498db").pack(side="left", padx=15)
         
         btn_frame = ctk.CTkFrame(self.header, fg_color="transparent")

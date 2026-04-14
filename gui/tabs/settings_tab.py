@@ -22,7 +22,7 @@ class SettingsTab:
         container = ctk.CTkFrame(self.frame, fg_color="transparent")
         container.pack(pady=30, padx=50, fill="both", expand=True)
         
-        ctk.CTkLabel(container, text="Preferências do Sistema", compound="left", image=icons.get_icon("settings"), 
+        ctk.CTkLabel(container, text=" Preferências do Sistema", compound="left", image=icons.get_icon("settings"), 
                      font=ctk.CTkFont(size=24, weight="bold")).pack(anchor="w", pady=(0, 20))
         
         # --- Grupo: Visualização ---
