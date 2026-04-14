@@ -102,4 +102,4 @@ Contribuições ajudam na manutenção, melhorias e novas funcionalidades.
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Consulte o arquivo `LICENSE` para mais detalhes. 
+Este projeto está sob a licença MIT. Consulte o arquivo `LICENSE` para mais detalhes.
