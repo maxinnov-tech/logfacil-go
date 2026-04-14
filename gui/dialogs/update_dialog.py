@@ -215,7 +215,7 @@ del /F /Q "{self.downloaded_file}" > NUL 2>&1
 if exist "{app_path}.bak" del /F /Q "{app_path}.bak" > NUL 2>&1
 
 :: Mensagem de sucesso e aviso para abrir manualmente
-powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('Atualização concluída com sucesso! Por favor, abra o LogFácil novamente.', 'LogFácil - Sucesso', 'OK', 'Information')" > NUL 2>&1
+powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('Atualiza\u00E7\u00E3o conclu\u00EDda com sucesso! Por favor, abra o LogF\u00E1cil novamente.', 'LogF\u00E1cil - Sucesso', 'OK', 'Information')" > NUL 2>&1
 
 :: Se auto deletar
 del /F /Q "%~f0"
