@@ -13,7 +13,7 @@ import os
 # ============================== CONFIGURAÇÃO DO GITHUB ==============================
 GITHUB_REPO = "ejcastro1090/LogFacil"
 GITHUB_BRANCH = "main"
-CURRENT_VERSION = "2.1.0"  # Versão oficial LogFácil Pro
+CURRENT_VERSION = "2.1.1"  # Versão oficial LogFácil Pro
 VERSION = CURRENT_VERSION
 
 # ============================== CONFIGURAÇÕES GERAIS ==============================
