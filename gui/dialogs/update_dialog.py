@@ -55,7 +55,7 @@ class UpdateDialog(ctk.CTkToplevel):
         info = ctk.CTkFrame(main)
         info.pack(fill="x", pady=5)
         
-        ctk.CTkLabel(info, text=f"Versão instalada: {self.updater.current_version}", compound="left", image=icons.get_icon("pin"),
+        ctk.CTkLabel(info, text=f" Versão instalada: {self.updater.current_version}", compound="left", image=icons.get_icon("pin"),
                      font=ctk.CTkFont(size=12)).pack(anchor="w", padx=10, pady=5)
         
         self.lbl_nova = ctk.CTkLabel(info, text="Verificando...", compound="left", image=icons.get_icon("search"),
@@ -63,10 +63,10 @@ class UpdateDialog(ctk.CTkToplevel):
         self.lbl_nova.pack(anchor="w", padx=10, pady=5)
         
         app_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(sys.argv[0])
-        ctk.CTkLabel(main, text=f"Pasta: {os.path.dirname(app_path)}", compound="left", image=icons.get_icon("opened-folder"),
+        ctk.CTkLabel(main, text=f" Pasta: {os.path.dirname(app_path)}", compound="left", image=icons.get_icon("opened-folder"),
                      font=ctk.CTkFont(size=11), text_color="#888888").pack(anchor="w", pady=5)
         
-        ctk.CTkLabel(main, text="Novidades:", compound="left", image=icons.get_icon("edit"),
+        ctk.CTkLabel(main, text=" Novidades:", compound="left", image=icons.get_icon("edit"),
                      font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(15, 5))
         
         self.txt_notas = ctk.CTkTextbox(main, height=120, wrap="word")
@@ -105,7 +105,7 @@ class UpdateDialog(ctk.CTkToplevel):
     
     def _resultado(self, tem_update: bool, versao: str):
         if tem_update:
-            self.lbl_nova.configure(text=f"Nova versão disponível: {versao}", compound="left", image=icons.get_icon("checkmark"), text_color="#3498db")
+            self.lbl_nova.configure(text=f" Nova versão disponível: {versao}", compound="left", image=icons.get_icon("checkmark"), text_color="#3498db")
             self.txt_notas.configure(state="normal")
             self.txt_notas.delete("1.0", "end")
             self.txt_notas.insert("1.0", self.updater.release_notes or "Sem notas disponíveis.")

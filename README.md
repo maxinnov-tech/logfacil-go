@@ -6,62 +6,81 @@
 [![Backend](https://img.shields.io/badge/backend-FastAPI-red)](https://fastapi.tiangolo.com)
 [![Download EXE](https://img.shields.io/badge/download-latest%20release-brightgreen)](https://github.com/ejcastro1090/logfacil/releases/latest)
 
+# 📌 LogFacil
+
+## 🧾 Sobre o Projeto
+
+O **LogFacil** é uma solução desenvolvida pela **MaxInnov** com o objetivo de otimizar e acelerar o suporte técnico por meio da análise inteligente de logs.
+
+A ferramenta atua como um **facilitador operacional**, centralizando e estruturando informações que normalmente estariam dispersas em múltiplos arquivos e diretórios. Com isso, reduz significativamente o tempo necessário para diagnóstico e resolução de incidentes.
+
+💡 Em vez de depender de navegação manual, comandos técnicos ou análise fragmentada, o técnico passa a contar com uma visão clara, objetiva e organizada dos eventos do sistema.
+
 ---
 
-## 📌 Sobre o Projeto
+## 🖼️ Interface do Sistema
 
-O **LogFacil** é uma ferramenta desenvolvida pela **MaxInnov** com foco em **otimizar e agilizar o suporte técnico** por meio da análise inteligente de logs.
+### Dashboard / Visão Geral
+![Dashboard](./docs/images/dashboard.png)
 
-O sistema atua como um **facilitador operacional**, centralizando e organizando informações que normalmente estariam dispersas em múltiplos arquivos e diretórios, reduzindo drasticamente o tempo necessário para diagnóstico de problemas.
+### Consulta de Logs
+![Consulta](./docs/images/consulta.png)
 
-> 💡 Em vez de perder tempo navegando em pastas ou usando comandos manuais, o técnico passa a ter uma visão clara, rápida e estruturada dos eventos do sistema.
+### Detalhamento de Eventos
+![Detalhes](./docs/images/detalhes.png)
+
+> 📌 *As imagens acima representam o fluxo principal de utilização do sistema.*
 
 ---
 
-## ⚠️ Aviso Importante (Responsabilidade e Independência)
+## ⚠️ Aviso Importante (Responsabilidade, Independência e Privacidade)
 
-O **LogFacil**:
+O LogFacil foi desenvolvido com foco em **segurança, transparência e uso não intrusivo**.
 
-* ❌ **Não possui qualquer vínculo oficial, integração nativa ou afiliação com o sistema WebPosto da Quality**
-* ❌ **Não altera, modifica ou interfere no funcionamento do WebPosto**
-* ✅ Atua **exclusivamente como uma ferramenta auxiliar de consulta e análise de logs**
-* ✅ Seu objetivo é **facilitar a vida do técnico**, auxiliando na identificação de erros e na tomada de decisão
+**O sistema:**
 
-Em outras palavras:
-👉 O sistema **não é parte do WebPosto**, é apenas um **recurso de apoio para diagnóstico**.
+❌ Não possui qualquer vínculo oficial, integração nativa ou afiliação com o sistema WebPosto da Quality  
+❌ Não altera, modifica ou interfere no funcionamento do WebPosto  
+❌ **Não realiza qualquer tipo de coleta, armazenamento externo ou compartilhamento de dados**  
+✅ Atua exclusivamente como ferramenta auxiliar de consulta e análise de logs  
+✅ Processa informações **apenas localmente**, utilizando arquivos já existentes no ambiente  
+✅ Não envia dados para servidores externos ou serviços de terceiros  
+✅ Tem como único objetivo **auxiliar o técnico na identificação de problemas e tomada de decisão**
+
+👉 Em resumo: o LogFacil é uma ferramenta independente, segura e 100% local, voltada exclusivamente para diagnóstico.
 
 ---
 
 ## 🚀 Funcionalidades
 
-* 🔍 **Consulta Unificada de Logs**
-  Interface web simples e direta para busca por data, hora, componente ou erro.
+### 🔍 Consulta Unificada de Logs  
+Interface web simples e objetiva para busca por data, hora, componente ou tipo de erro.
 
-* 🤖 **Coleta Automática**
-  Captura logs em tempo real de múltiplas fontes (Integra, PulserWeb, PDVs, PAYs, bombas, etc.) sem intervenção manual.
+### 🤖 Coleta Automatizada  
+Leitura contínua de logs provenientes de múltiplas fontes (Integra, PulserWeb, PDVs, PAYs, bombas, entre outros), sem necessidade de intervenção manual.
 
-* 📍 **Identificação de Origem (PDV / PAY)**
-  Localize rapidamente qual equipamento ou transação gerou o evento.
+### 📍 Identificação de Origem  
+Rastreamento rápido da origem dos eventos (PDV, PAY ou outros dispositivos), facilitando a análise de incidentes.
 
-* 🧠 **Base de Erros Catalogados**
-  Exibe possíveis causas e soluções com base em erros já conhecidos.
+### 🧠 Base de Conhecimento de Erros  
+Correlação de erros com possíveis causas e sugestões de solução com base em ocorrências já catalogadas.
 
-* ⚡ **Produtividade Real**
-  Elimina a necessidade de comandos como `tail`, acesso manual a diretórios ou análise fragmentada.
+### ⚡ Ganho Real de Produtividade  
+Elimina a necessidade de comandos como `tail`, acesso manual a diretórios ou análise descentralizada.
 
-* 🔔 **Alertas Inteligentes**
-  Notificações para eventos críticos previamente mapeados.
+### 🔔 Alertas Inteligentes  
+Notificações para eventos críticos previamente definidos, permitindo atuação proativa.
 
 ---
 
 ## 🎯 Objetivo
 
-Ser uma ferramenta prática e confiável para:
+O LogFacil foi projetado para:
 
-* Reduzir tempo de diagnóstico
-* Padronizar análise de logs
-* Aumentar a eficiência do suporte técnico
-* Diminuir erros humanos na interpretação de logs
+- Reduzir drasticamente o tempo de diagnóstico  
+- Padronizar a análise de logs  
+- Aumentar a eficiência operacional do suporte técnico  
+- Minimizar erros humanos na interpretação de informações  
 
 ---
 
@@ -69,37 +88,36 @@ Ser uma ferramenta prática e confiável para:
 
 Para utilizar o sistema sem necessidade de instalação de dependências:
 
-👉 **Baixe o executável da versão mais recente:**
-[https://github.com/ejcastro1090/logfacil/releases/latest](https://github.com/ejcastro1090/logfacil/releases/latest)
+👉 https://github.com/ejcastro1090/logfacil/releases/latest
 
 ---
 
 ## 🧩 Stack Tecnológica
 
-* **Backend:** FastAPI
-* **Frontend:** Vue.js
-* **Linguagem:** Python 3.8+
+- **Backend:** FastAPI  
+- **Frontend:** Vue.js  
+- **Linguagem:** Python 3.8+  
 
 ---
 
 ## 📈 Visão
 
-O LogFacil segue uma linha simples:
+O LogFacil segue um princípio simples e direto:
 
-> **menos tempo procurando, mais tempo resolvendo.**
+> **Menos tempo procurando, mais tempo resolvendo.**
 
-A proposta é evoluir continuamente como uma ferramenta indispensável no dia a dia do suporte técnico.
+A proposta é evoluir continuamente como uma ferramenta essencial no dia a dia do suporte técnico.
 
 ---
-💡 Apoie o Projeto
 
-Se o LogFacil te ajuda no dia a dia e você quiser contribuir com a evolução do projeto, qualquer apoio é bem-vindo.
+## 💡 Apoie o Projeto
 
-👉 Chave PIX: contato@maxinnov.com.br
+Se o LogFacil gera valor no seu dia a dia e você deseja apoiar sua evolução:
 
-Contribuições ajudam na manutenção, melhorias e novas funcionalidades.
+👉 **PIX:** contato@maxinnov.com.br  
 
+---
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Consulte o arquivo `LICENSE` para mais detalhes.
+Este projeto está licenciado sob a **MIT License**. Consulte o arquivo `LICENSE` para mais detalhes.
