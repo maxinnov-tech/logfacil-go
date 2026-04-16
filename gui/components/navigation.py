@@ -78,6 +78,7 @@ class Sidebar(ctk.CTkFrame):
         self._add_nav_btn("DASHBOARD", "dashboard", icon_name="dashboard")
         self._add_nav_btn("LOGS",      "logs",      icon_name="logs")
         self._add_nav_btn("PDVs",      "pdvs",      icon_name="pdv")
+        self._add_nav_btn("EXPORTAR",  "export",    icon_name="save")
 
         # Espaçamento flexível (empurra Configurações para baixo)
         ctk.CTkFrame(self, fg_color="transparent").pack(fill="both", expand=True)

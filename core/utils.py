@@ -11,8 +11,25 @@ a outras áreas da aplicação. Aqui encontram-se ferramentas para:
 import os
 from typing import Dict, Tuple
 
+import socket
 from core.logger import logger
 from core.config import LOG_EXTENSIONS, ENCODINGS
+
+def get_main_ip() -> str:
+    """Retorna o IP principal da máquina (interface de rede ativa)."""
+    try:
+        # Tenta conectar a um IP externo (não envia dados) para descobrir a interface de saída
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except:
+            return "127.0.0.1"
 
 def service_from_path(path: str) -> str:
     parts = os.path.normpath(path).split(os.sep)

@@ -57,10 +57,10 @@ class PDVMonitorTab:
         style.configure("Treeview.Heading", background="#3c3c3c", foreground="white", font=("Segoe UI", 10, "bold"), borderwidth=0)
         style.map('Treeview', background=[('selected', '#3498db')])
         
-        self.tree = ttk.Treeview(table_container, columns=("horario", "codigo", "nome", "id_interno", "tipo", "status"),
+        self.tree = ttk.Treeview(table_container, columns=("horario", "codigo", "nome", "ip", "id_interno", "tipo", "status"),
                                   show="headings")
         
-        cols = {"horario": "Horário", "codigo": "Cod", "nome": "Nome Terminal", "id_interno": "ID Interno", "tipo": "Tipo", "status": "Status"}
+        cols = {"horario": "Horário", "codigo": "Cod", "nome": "Nome Terminal", "ip": "Endereço IP", "id_interno": "ID Interno", "tipo": "Tipo", "status": "Status"}
         for k, v in cols.items():
             self.tree.heading(k, text=v)
             self.tree.column(k, anchor="center", width=100)
@@ -125,7 +125,7 @@ class PDVMonitorTab:
         status = "Ativo"
         tipo_map = {'M': 'Pagamento', 'C': 'Conveniência', 'P': 'Apresentação', 'E': 'Teste'}
         try:
-            self.tree.insert("", 0, values=(horario_str, pdv.codigo, pdv.nome, pdv.id_interno, tipo_map.get(pdv.tipo, pdv.tipo), status))
+            self.tree.insert("", 0, values=(horario_str, pdv.codigo, pdv.nome, pdv.ip, pdv.id_interno, tipo_map.get(pdv.tipo, pdv.tipo), status))
         except: pass
     
     def _limpar_historico(self):
@@ -141,9 +141,9 @@ class PDVMonitorTab:
         if fn:
             try:
                 with open(fn, 'w', encoding='utf-8-sig') as f:
-                    f.write("Horário;Código;Nome;ID Interno;Tipo;Status\n")
+                    f.write("Horário;Código;Nome;IP;ID Interno;Tipo;Status\n")
                     for p, h in self.pdv_history:
-                        f.write(f"{h.strftime('%H:%M:%S')};{p.codigo};{p.nome};{p.id_interno};{p.tipo};Operando\n")
+                        f.write(f"{h.strftime('%H:%M:%S')};{p.codigo};{p.nome};{p.ip};{p.id_interno};{p.tipo};Operando\n")
             except Exception as e:
                 logger.error(f"Erro ao exportar: {e}")
     

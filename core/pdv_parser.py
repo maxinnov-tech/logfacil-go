@@ -15,6 +15,7 @@ import requests
 from typing import List, Optional, Tuple
 
 from core.logger import logger
+from core.utils import get_main_ip
 from models.pdv import PDVInfo, LogPDVActivity
 
 def extrair_todos_pdvs_do_log(caminho_log: str) -> List[LogPDVActivity]:
@@ -145,6 +146,7 @@ def consultar_todos_pdvs_via_api(base_url: str = "http://localhost:8080") -> Lis
 
 def identificar_todos_pdvs_por_log(pasta_log: str) -> Tuple[List[PDVInfo], str]:
     todos_pdvs = consultar_todos_pdvs_via_api()
+    main_ip = get_main_ip()
     log_path = encontrar_log_webPostoPayServer(pasta_log)
     atividades_log = extrair_todos_pdvs_do_log(log_path) if log_path else []
     
@@ -156,6 +158,7 @@ def identificar_todos_pdvs_por_log(pasta_log: str) -> Tuple[List[PDVInfo], str]:
         if atividade.pdv_idq:
             if atividade.pdv_idq in pdvs_por_id:
                 pdv_encontrado = pdvs_por_id[atividade.pdv_idq]
+                pdv_encontrado.ip = atividade.ip or main_ip
                 pdvs_encontrados.append(pdv_encontrado)
                 mensagens.append(f"PDV {pdv_encontrado.codigo} - {pdv_encontrado.nome}")
             else:
@@ -163,7 +166,8 @@ def identificar_todos_pdvs_por_log(pasta_log: str) -> Tuple[List[PDVInfo], str]:
                     codigo=atividade.pdv_referencia or f"PDV_{atividade.pdv_idq}",
                     id_interno=atividade.pdv_idq,
                     nome=f"PDV {atividade.pdv_referencia or atividade.pdv_idq}",
-                    tipo='M', operando=True, serial='N/A', codigo_estoque=''
+                    tipo='M', operando=True, serial='N/A', codigo_estoque='',
+                    ip=atividade.ip or main_ip
                 )
                 pdvs_encontrados.append(pdv_temp)
                 mensagens.append(f"PDV não cadastrado - IDQ: {atividade.pdv_idq}")
@@ -171,6 +175,7 @@ def identificar_todos_pdvs_por_log(pasta_log: str) -> Tuple[List[PDVInfo], str]:
     if not pdvs_encontrados and todos_pdvs:
         pdvs_pay_ativos = [p for p in todos_pdvs if p.tipo == 'M' and p.operando]
         for pdv in pdvs_pay_ativos:
+            pdv.ip = main_ip
             pdvs_encontrados.append(pdv)
             mensagens.append(f"PDV PAY: {pdv.codigo} - {pdv.nome}")
     

@@ -220,11 +220,22 @@ class LogTab:
         self._update_custom_highlight()
 
     def _update_custom_highlight(self):
+        # Debounce: Cancelar qualquer agendamento anterior
+        if hasattr(self, "_highlight_timer") and self._highlight_timer:
+            self.frame.after_cancel(self._highlight_timer)
+        
+        # Agenda a execução para 350ms após a última tecla
+        self._highlight_timer = self.frame.after(350, self._do_update_custom_highlight)
+
+    def _do_update_custom_highlight(self):
+        self._highlight_timer = None
         self.custom_highlight_term = self.entry_highlight.get()
         self.text.tag_remove("CUSTOM_HL", "1.0", "end")
         self.text.tag_config("CUSTOM_HL", background=self.custom_highlight_color, foreground="white")
         if self.custom_highlight_term:
-            self._apply_highlighting("1.0", "end")
+            # Otimização: Apenas se o termo tiver pelo menos 2 caracteres ou for um número
+            if len(self.custom_highlight_term) >= 2 or self.custom_highlight_term.isdigit():
+                self._apply_highlighting("1.0", "end")
 
     def _restart_service(self):
         if messagebox.askyesno("Confirmar", f"Reiniciar serviço '{self.service_name}'?"):

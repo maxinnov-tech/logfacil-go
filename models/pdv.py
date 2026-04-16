@@ -19,6 +19,7 @@ class PDVInfo:
     operando: bool
     serial: str
     codigo_estoque: str
+    ip: str = "127.0.0.1"
     
     @property
     def tipo_descricao(self) -> str:

@@ -28,6 +28,7 @@ from gui.tabs.dashboard_tab import DashboardTab
 from gui.tabs.log_tab import LogTab
 from gui.tabs.pdv_tab import PDVMonitorTab
 from gui.tabs.settings_tab import SettingsTab
+from gui.tabs.export_tab import ExportLogsTab
 from gui.utils.icon_manager import icons
 from gui.managers.global_search import GlobalSearch
 from gui.components.status_bar import StatusBar
@@ -154,6 +155,7 @@ class App:
         # ============================================================
         self.views["dashboard"] = DashboardTab(self)
         self.views["pdvs"] = PDVMonitorTab(self)
+        self.views["export"] = ExportLogsTab(self)
         self.views["settings"] = SettingsTab(self)
 
         # Log Container (TabView)
