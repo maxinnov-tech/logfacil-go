@@ -5,7 +5,7 @@ import {
   Search, ShieldAlert, ShieldCheck, RefreshCw, FolderOpen,
   AlertTriangle, Activity, Wifi, FileDown, Trash2,
   ChevronRight, Map, PanelLeftClose, PanelLeftOpen,
-  Pause, Play, Bookmark, X, ChevronUp, ChevronDown, Info
+  Pause, Play, Bookmark, X, ChevronUp, ChevronDown, Info, Heart
 } from 'lucide-vue-next'
 import {
   GetSettings, SaveSettings, IsAdmin, RestartAsAdmin,
@@ -1257,6 +1257,16 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
             <div class="bg-black/20 p-2.5 rounded-lg border border-white/5">
               <p class="font-medium text-slate-300 mb-1 flex items-center gap-1.5"><ShieldCheck class="w-3.5 h-3.5 text-green-500" /> Ferramenta Independente</p>
               <p class="text-[10px]">O LogFácil atua exclusivamente como ferramenta de consulta local. Não possui coleta externa de dados e não interfere no funcionamento de outros serviços.</p>
+            </div>
+
+            <div class="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex items-center justify-between">
+              <div>
+                <p class="font-medium text-emerald-400 text-[10px] flex items-center gap-1.5 mb-0.5">
+                  <Heart class="w-3 h-3" /> Apoie o Projeto
+                </p>
+                <p class="text-[9px] text-emerald-200/70 font-mono select-all">contato@maxinnov.com.br</p>
+              </div>
+              <span class="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-300 text-[9px] font-bold tracking-widest">PIX</span>
             </div>
           </div>
 
