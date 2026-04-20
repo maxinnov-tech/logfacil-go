@@ -670,7 +670,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
             class="hidden sm:flex items-center gap-1 text-[9px] text-slate-600 border border-white/10 px-2 py-1 rounded font-mono">
             F2 Pausar · Ctrl+F Buscar
           </span>
-          <span class="text-[9px] text-slate-700 font-mono hidden md:block">v2.1.1-GO</span>
+          <span class="text-[9px] text-slate-700 font-mono hidden md:block">v2.1.2-GO</span>
         </div>
       </header>
 
@@ -1144,7 +1144,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
                   Salvar Alterações
                 </button>
               </div>
-              <div class="text-center text-[9px] text-slate-600">LogFácil Pro v2.1.1-GO · MaxInnov © 2026</div>
+              <div class="text-center text-[9px] text-slate-600">LogFácil Pro v2.1.2-GO · MaxInnov © 2026</div>
             </div>
 
           </div>
@@ -1165,7 +1165,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
             <Pause class="w-2.5 h-2.5" /> Log pausado
           </span>
         </div>
-        <span>MaxInnov · v2.1.1-GO</span>
+        <span>MaxInnov · v2.1.2-GO</span>
       </footer>
     </main>
 

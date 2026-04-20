@@ -40,7 +40,7 @@ jobs:
     - name: Criar Release e Fazer Upload
       uses: softprops/action-gh-release@v2
       with:
-        files: build/bin/logf.exe
+        files: build/bin/LogFacil-GO.exe
         name: LogFacil ${{ github.ref_name }}
         draft: false
         prerelease: false
