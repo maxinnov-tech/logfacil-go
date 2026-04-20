@@ -1,8 +1,7 @@
 # Arquivo: .github/workflows/build.yml
 # Descrição: Definição da pipeline de Integração e Deploy Contínuo (CI/CD) no GitHub Actions.
 # Orquestra as etapas de compilação automática: inicializa servidor de build no Windows, 
-# instala Python e os requirements listados, gera dinamicamente o arquivo Exe usando o 
-# PyInstaller com a versão especificada na Tag do Git e cria a Release automaticamente.
+# instala Go, Node.js e Wails CLI, gera o arquivo Exe.
 name: Build e Release
 
 permissions:
@@ -11,7 +10,7 @@ permissions:
 on:
   push:
     tags:
-      - 'v*' # Aciona apenas se você criar/enviar uma tag que comece com 'v', exemplo: 'v1.1.9'
+      - 'v*' # Aciona apenas se você criar/enviar uma tag que comece com 'v', exemplo: 'v2.1.2-GO'
 
 jobs:
   build:
@@ -21,26 +20,27 @@ jobs:
     - name: Fazer Checkout do Código
       uses: actions/checkout@v4
 
-    - name: Mapear Python
-      uses: actions/setup-python@v5
+    - name: Configurar Go
+      uses: actions/setup-go@v5
       with:
-        python-version: '3.11' # Versão recomendada para estabilidade com PyInstaller
-        cache: 'pip'
+        go-version: '1.21'
+        cache: true
 
-    - name: Instalar Dependências
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
 
-    - name: Compilar o Executável (.exe)
-      run: |
-        pyinstaller --clean LogFacil.spec
+    - name: Instalar Wails
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+    - name: Build do Wails
+      run: wails build
 
     - name: Criar Release e Fazer Upload
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/LogFacil.exe
+        files: build/bin/logf.exe
         name: LogFacil ${{ github.ref_name }}
         draft: false
         prerelease: false
