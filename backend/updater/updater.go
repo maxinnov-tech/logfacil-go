@@ -187,32 +187,32 @@ echo Atualizando o LogFacil...
 timeout /t 3 /nobreak > NUL
 
 :: Tenta forcar encerramento caso ainda esteja rodando
-taskkill /F /IM "%s" > NUL 2>&1
+taskkill /F /IM "%[1]s" > NUL 2>&1
 
 :: Desbloqueia o arquivo (Remove flag de Web do Windows)
-powershell -Command "Unblock-File -Path '%s'" > NUL 2>&1
+powershell -Command "Unblock-File -Path '%[2]s'" > NUL 2>&1
 
 :: Deletar backup antigo se existir
-if exist "%s.bak" del /F /Q "%s.bak" > NUL 2>&1
+if exist "%[3]s.bak" del /F /Q "%[3]s.bak" > NUL 2>&1
 
 :: Renomear atual para backup
-if exist "%s" ren "%s" "%s.bak" > NUL 2>&1
+if exist "%[3]s" ren "%[3]s" "%[1]s.bak" > NUL 2>&1
 
 :: Copiar o novo arquivo baixado
-copy /Y "%s" "%s" > NUL
+copy /Y "%[2]s" "%[3]s" > NUL
 
 :: Deletar arquivo temporario do Update
-del /F /Q "%s" > NUL 2>&1
+del /F /Q "%[2]s" > NUL 2>&1
 
 :: Deleta o backup 
-if exist "%s.bak" del /F /Q "%s.bak" > NUL 2>&1
+if exist "%[3]s.bak" del /F /Q "%[3]s.bak" > NUL 2>&1
 
 :: Inicia o novo aplicativo de forma independente
-start "" "%s"
+start "" "%[3]s"
 
 :: Se auto deletar
 del /F /Q "%%~f0"
-`, exeName, downloadedFile, appPath, appPath, appPath, exeName, downloadedFile, appPath, downloadedFile, appPath, appPath)
+`, exeName, downloadedFile, appPath)
 
 	tempDir := filepath.Join("C:\\", "temp")
 	batPath := filepath.Join(tempDir, fmt.Sprintf("logfacil_updater_%d.bat", os.Getpid()))
