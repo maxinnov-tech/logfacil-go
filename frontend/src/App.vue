@@ -580,9 +580,8 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
       <!-- Header da sidebar -->
       <div class="flex items-center justify-between p-3 border-b border-white/5 min-h-[52px] relative">
         <div v-if="!sidebarCollapsed" class="flex items-center gap-2">
-          <div class="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center flex-shrink-0">
-            <Activity class="w-3.5 h-3.5 text-white" />
-          </div>
+          <!-- TODO: Cole o seu arquivo logo.png dentro da pasta frontend/src/assets/ -->
+          <img src="./assets/logo.png" class="w-6 h-6 object-contain" alt="Logo" />
           <span class="text-sm font-bold whitespace-nowrap">LogFácil <span class="text-blue-400">Pro</span></span>
         </div>
         
@@ -1242,9 +1241,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
       <div v-if="showAboutModal" class="absolute inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showAboutModal = false">
         <div class="glass-panel max-w-sm w-full p-5 rounded-xl border border-white/5 shadow-2xl">
           <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
-              <Activity class="w-5 h-5 text-blue-400" />
-            </div>
+            <img src="./assets/logo.png" class="w-10 h-10 object-contain" alt="Logo" />
             <div>
               <h3 class="text-sm font-bold text-slate-200">LogFácil Pro</h3>
               <p class="text-[10px] font-mono text-slate-500">Versão 2.1.3-GO</p>

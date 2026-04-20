@@ -18,7 +18,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "LogFácil Pro v2.0 (GO)",
+		Title:  "LogFácil Pro",
 		Width:  1280,
 		Height: 800,
 		AssetServer: &assetserver.Options{

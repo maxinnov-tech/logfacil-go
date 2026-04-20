@@ -17,6 +17,7 @@ A ferramenta atua como um facilitador operacional, centralizando e estruturando 
 ## 🖼️ Interface do Sistema
 *Dashboard / Visão Geral*
 *(Insira a imagem do Dashboard aqui)*
+![Dashboard](./docs/images/dashboard.png)
 
 *Consulta de Logs*
 *(Insira a imagem da Consulta aqui)*

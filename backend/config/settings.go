@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	Version        = "2.1.3-GO"
+	Version        = "2.1.4-GO"
 	GithubRepo     = "maxinnov-tech/logfacil-go"
 	DefaultRoot    = "C:\\Quality\\LOG"
 	DefaultAPIBase = "http://localhost:8080"
