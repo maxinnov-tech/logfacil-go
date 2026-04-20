@@ -5,7 +5,7 @@ import {
   Search, ShieldAlert, ShieldCheck, RefreshCw, FolderOpen,
   AlertTriangle, Activity, Wifi, FileDown, Trash2,
   ChevronRight, Map, PanelLeftClose, PanelLeftOpen,
-  Pause, Play, Bookmark, X, ChevronUp, ChevronDown
+  Pause, Play, Bookmark, X, ChevronUp, ChevronDown, Info
 } from 'lucide-vue-next'
 import {
   GetSettings, SaveSettings, IsAdmin, RestartAsAdmin,
@@ -39,6 +39,7 @@ const monitorInterval = ref(null)
 const checkUpdateLoading = ref(false)
 const updateInfo = ref(null)
 const showUpdateModal = ref(false)
+const showAboutModal = ref(false)
 const updateProgress = ref(0)
 const updateBytesStr = ref('')
 const isUpdating = ref(false)
@@ -670,7 +671,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
             class="hidden sm:flex items-center gap-1 text-[9px] text-slate-600 border border-white/10 px-2 py-1 rounded font-mono">
             F2 Pausar · Ctrl+F Buscar
           </span>
-          <span class="text-[9px] text-slate-700 font-mono hidden md:block">v2.1.2-GO</span>
+          <span class="text-[9px] text-slate-700 font-mono hidden md:block">v2.1.3-GO</span>
         </div>
       </header>
 
@@ -1144,7 +1145,7 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
                   Salvar Alterações
                 </button>
               </div>
-              <div class="text-center text-[9px] text-slate-600">LogFácil Pro v2.1.2-GO · MaxInnov © 2026</div>
+              <div class="text-center text-[9px] text-slate-600">LogFácil Pro v2.1.3-GO · MaxInnov © 2026</div>
             </div>
 
           </div>
@@ -1165,7 +1166,10 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
             <Pause class="w-2.5 h-2.5" /> Log pausado
           </span>
         </div>
-        <span>MaxInnov · v2.1.2-GO</span>
+        <button @click="showAboutModal = true" class="flex items-center gap-1.5 hover:text-slate-300 transition-colors">
+          <Info class="w-3 h-3" />
+          <span>MaxInnov · v2.1.3-GO</span>
+        </button>
       </footer>
     </main>
 
@@ -1228,6 +1232,39 @@ onUnmounted(() => { window.removeEventListener('keydown', handleKey) })
                 {{ isUpdating ? 'Processando...' : 'Instalar Agora' }}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Modal Sobre (Discreto) -->
+    <transition name="vfade">
+      <div v-if="showAboutModal" class="absolute inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showAboutModal = false">
+        <div class="glass-panel max-w-sm w-full p-5 rounded-xl border border-white/5 shadow-2xl">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+              <Activity class="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-200">LogFácil Pro</h3>
+              <p class="text-[10px] font-mono text-slate-500">Versão 2.1.3-GO</p>
+            </div>
+          </div>
+          
+          <div class="space-y-3 text-[11px] text-slate-400 leading-relaxed border-t border-white/5 pt-4">
+            <p>Solução desenvolvida pela <span class="text-slate-300 font-medium">MaxInnov</span> com o objetivo de otimizar e acelerar o suporte técnico por meio da análise inteligente de logs.</p>
+            
+            <div class="bg-black/20 p-2.5 rounded-lg border border-white/5">
+              <p class="font-medium text-slate-300 mb-1 flex items-center gap-1.5"><ShieldCheck class="w-3.5 h-3.5 text-green-500" /> Ferramenta Independente</p>
+              <p class="text-[10px]">O LogFácil atua exclusivamente como ferramenta de consulta local. Não possui coleta externa de dados e não interfere no funcionamento de outros serviços.</p>
+            </div>
+          </div>
+
+          <div class="mt-5 pt-3 border-t border-white/5 flex items-center justify-between">
+            <span class="text-[9px] text-slate-600 font-mono">MIT License © 2026</span>
+            <button @click="showAboutModal = false" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-medium transition-colors text-slate-300">
+              Fechar
+            </button>
           </div>
         </div>
       </div>
