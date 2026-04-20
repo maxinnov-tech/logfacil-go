@@ -7,15 +7,15 @@ import (
 )
 
 const (
-	Version         = "2.1.1-GO"
-	GithubRepo      = "maxinnov-tech/logfacil-go"
-	DefaultRoot     = "C:\\Quality\\LOG"
-	DefaultAPIBase  = "http://localhost:8080"
+	Version        = "2.1.3-GO"
+	GithubRepo     = "maxinnov-tech/logfacil-go"
+	DefaultRoot    = "C:\\Quality\\LOG"
+	DefaultAPIBase = "http://localhost:8080"
 
 	// Intervalos idênticos ao Python
-	ScanIntervalSec    = 5
-	TailPollMs         = 200
-	MaxStartBytes      = 128 * 1024
+	ScanIntervalSec     = 5
+	TailPollMs          = 200
+	MaxStartBytes       = 128 * 1024
 	DefaultMaxViewLines = 1000
 	DefaultFontSize     = 13
 	DefaultScanInterval = 2.0
