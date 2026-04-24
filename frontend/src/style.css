@@ -20,6 +20,10 @@
   --scrollbar-thumb: rgba(255, 255, 255, 0.1);
   --glass-blur: blur(12px);
   --log-terminal-bg: rgba(2, 6, 23, 0.85); /* slate-950 with opacity */
+  
+  /* Status Colors */
+  --status-warning: #fbbf24; /* amber-400 */
+  --status-warning-bg: rgba(245, 158, 11, 0.2);
 }
 
 /* Light Theme */
@@ -40,6 +44,10 @@
   --scrollbar-thumb: rgba(0, 0, 0, 0.1);
   --glass-blur: blur(8px);
   --log-terminal-bg: #ffffff;
+
+  /* Status Colors */
+  --status-warning: #b45309; /* amber-700 - Much better contrast on light */
+  --status-warning-bg: rgba(245, 158, 11, 0.15);
 }
 
 /* Accent: Green (Esmeralda) */

@@ -87,6 +87,10 @@ const logContainerRef = ref(null)
 const tabsContainerRef = ref(null)
 const isFollowing = ref(true)
 
+// Buffer de batching: acumula linhas por serviço antes de aplicar na UI
+const pendingLines = {}          // { service: [linhas...] } - buffer temporário
+let batchFlushTimer = null       // timer de flush
+
 // ─── Marcador / Custom Highlight ───
 const customHighlightTerm = ref('')
 const HIGHLIGHT_COLOR = '#4dabf7'
@@ -108,29 +112,31 @@ const logClientHeight = ref(1)
 // ─── Computed ──────────────────────────────────────────────────────────────
 const activeLogsCount = computed(() => Object.keys(serviceLogs.value).length)
 
-const criticalAlerts = computed(() => {
-  let count = 0
-  if (!logMarkers.value.length) return 0
+const criticalAlerts = ref(0)
+const errorPatterns = computed(() => {
+  if (!logMarkers.value.length) return []
   const errorStyles = ['exception', 'error']
-  const errorPatterns = logMarkers.value
+  return logMarkers.value
     .filter(m => errorStyles.includes(m.level))
     .map(m => m.pattern.toUpperCase())
+})
 
-  if (!errorPatterns.length) return 0
-
-  for (const lines of Object.values(serviceLogs.value)) {
-    for (const line of lines) {
-      const upperLine = line.toUpperCase()
-      for (const p of errorPatterns) {
-        if (upperLine.includes(p)) {
-          count++
-          break
-        }
+function checkErrorInLines(lines) {
+  let count = 0
+  const patterns = errorPatterns.value
+  if (!patterns.length) return 0
+  
+  for (const line of lines) {
+    const upperLine = line.toUpperCase()
+    for (const p of patterns) {
+      if (upperLine.includes(p)) {
+        count++
+        break
       }
     }
   }
   return count
-})
+}
 
 const currentLines = computed(() =>
   (activeLogTab.value && serviceLogs.value[activeLogTab.value])
@@ -314,9 +320,20 @@ function addLines(svc, lines) {
     serviceLogs.value[svc] = []
     if (!activeLogTab.value) activeLogTab.value = svc
   }
+  
+  // Atualiza contador de erros antes de adicionar (apenas para as novas)
+  const newErrors = checkErrorInLines(lines)
+  criticalAlerts.value += newErrors
+
   serviceLogs.value[svc].push(...lines)
-  if (serviceLogs.value[svc].length > max)
+  
+  if (serviceLogs.value[svc].length > max) {
+    const evicted = serviceLogs.value[svc].slice(0, serviceLogs.value[svc].length - max)
+    // Decrementa erros das linhas que saíram do buffer
+    const evictedErrors = checkErrorInLines(evicted)
+    criticalAlerts.value = Math.max(0, criticalAlerts.value - evictedErrors)
     serviceLogs.value[svc] = serviceLogs.value[svc].slice(-max)
+  }
 }
 
 function searchNext() {
@@ -427,7 +444,11 @@ async function handleChooseFolder() {
 }
 
 function clearLogTab(svc) {
-  if (serviceLogs.value[svc]) serviceLogs.value[svc] = []
+  if (serviceLogs.value[svc]) {
+    const errors = checkErrorInLines(serviceLogs.value[svc])
+    criticalAlerts.value = Math.max(0, criticalAlerts.value - errors)
+    serviceLogs.value[svc] = []
+  }
   if (pausedLines.value[svc]) pausedLines.value[svc] = []
 }
 
@@ -462,20 +483,36 @@ async function startUpdateDownload() {
 }
 
 onMounted(() => {
-  loadInitialData()
   window.addEventListener('keydown', handleKey)
+
+  // ─── Registra listeners ANTES de qualquer chamada async ────────────────────
+  // O backend espera 2s antes de emitir eventos - garante que chegamos antes.
+
+  // Flush de logs em lote: a cada 50ms aplica tudo que acumulou
+  batchFlushTimer = setInterval(() => {
+    if (!Object.keys(pendingLines).length) return
+    for (const [svc, lines] of Object.entries(pendingLines)) {
+      if (!lines.length) continue
+      if (!isFollowing.value) {
+        if (!pausedLines.value[svc]) pausedLines.value[svc] = []
+        pausedLines.value[svc].push(...lines)
+      } else {
+        addLines(svc, lines)
+        if (activeLogTab.value === svc) { scrollToBottom(); nextTick(updateMetrics) }
+      }
+      delete pendingLines[svc]
+    }
+  }, 50)
+
   EventsOn('service-log-append', update => {
     if (!update?.service) return
     const lines = update.content.split('\n').filter(l => l.trim())
     if (!lines.length) return
-    if (!isFollowing.value) {
-      if (!pausedLines.value[update.service]) pausedLines.value[update.service] = []
-      pausedLines.value[update.service].push(...lines)
-    } else {
-      addLines(update.service, lines)
-      if (activeLogTab.value === update.service) { scrollToBottom(); nextTick(updateMetrics) }
-    }
+    // Acumula no buffer temporário (sem toque na UI)
+    if (!pendingLines[update.service]) pendingLines[update.service] = []
+    pendingLines[update.service].push(...lines)
   })
+
   EventsOn('ip-updated', ip => { if (ip) localIP.value = ip })
   EventsOn('update-available', res => { updateInfo.value = res; showUpdateModal.value = true })
   EventsOn('update-progress', prog => {
@@ -483,11 +520,15 @@ onMounted(() => {
     if (prog.total > 1024 * 1024) updateBytesStr.value = `${(prog.downloaded / (1024*1024)).toFixed(1)} / ${(prog.total / (1024*1024)).toFixed(1)} MB`
     else updateBytesStr.value = `${(prog.downloaded / 1024).toFixed(1)} / ${(prog.total / 1024).toFixed(1)} KB`
   })
+
+  // Carrega dados iniciais DEPOIS de registrar os listeners
+  loadInitialData()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKey)
   if (monitorInterval.value) clearInterval(monitorInterval.value)
+  if (batchFlushTimer) clearInterval(batchFlushTimer)
 })
 </script>
 
@@ -646,7 +687,7 @@ onUnmounted(() => {
               <div ref="tabsContainerRef" @wheel.passive="handleTabsWheel" class="flex gap-0.5 mb-1 border-b border-theme flex-shrink-0 pb-px tabs-hide-scroll overflow-x-auto select-none">
                 <button v-for="(lines, svc) in serviceLogs" :key="svc" @click="scrollToActiveTab(svc)" :class="['px-3 py-1.5 rounded-t text-[10px] font-bold whitespace-nowrap border-b-2 flex items-center gap-1.5 transition-all flex-shrink-0', activeLogTab === svc ? 'bg-accent-10 text-accent border-accent tab-active' : 'text-secondary border-transparent hover:text-primary hover:bg-theme-10']">
                   <span class="w-1.5 h-1.5 rounded-full" :class="activeLogTab === svc ? 'bg-accent' : 'bg-muted'"></span>{{ svc }}
-                  <span v-if="!isFollowing && (pausedLines[svc] || []).length" class="px-1 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[8px] font-bold">+{{ (pausedLines[svc] || []).length }}</span>
+                  <span v-if="!isFollowing && (pausedLines[svc] || []).length" class="px-1 py-0.5 rounded text-[8px] font-bold" :style="{ backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)' }">+{{ (pausedLines[svc] || []).length }}</span>
                 </button>
               </div>
               <div class="flex flex-1 min-h-0 gap-2">
@@ -690,8 +731,8 @@ onUnmounted(() => {
               </transition>
               <div v-if="activeLogTab" class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-white/5 flex-shrink-0">
                 <div class="flex items-center gap-2">
-                  <button @click="toggleFollow" :class="['px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border', isFollowing ? 'bg-blue-600 text-white border-blue-500' : 'bg-amber-500/10 text-amber-400 border-amber-500/20']">
-                    {{ isFollowing ? 'Seguindo — F2' : 'Pausado — F2' }}<span v-if="!isFollowing && unreadCount > 0" class="px-1 py-0.5 bg-amber-500/20 rounded">+{{ unreadCount }}</span>
+                  <button @click="toggleFollow" :class="['px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border', isFollowing ? 'bg-blue-600 text-white border-blue-500' : '']" :style="!isFollowing ? { backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', borderColor: 'var(--status-warning)' } : {}">
+                    {{ isFollowing ? 'Seguindo — F2' : 'Pausado — F2' }}<span v-if="!isFollowing && unreadCount > 0" class="px-1 py-0.5 rounded" :style="{ backgroundColor: 'var(--status-warning-bg)', filter: 'brightness(0.95)' }">+{{ unreadCount }}</span>
                   </button>
                   <button @click="handleRestartComponent(activeLogTab)" :disabled="loading || !isAdmin" class="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] flex items-center gap-1.5 disabled:opacity-40"><RefreshCw class="w-3 h-3" /> Reiniciar <span class="font-mono">{{ activeLogTab }}</span></button>
                 </div>
@@ -764,7 +805,7 @@ onUnmounted(() => {
       </section>
 
       <footer class="h-7 glass-panel mt-3 px-3 flex items-center justify-between text-[9px] text-muted flex-shrink-0">
-        <div class="flex gap-3"><span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Conectado</span><span v-if="activeLogsCount" class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> {{ activeLogsCount }} serviço(s)</span><span v-if="!isFollowing && currentView === 'logs'" class="flex items-center gap-1 text-amber-500 font-bold"><Pause class="w-2.5 h-2.5" /> LOG PAUSADO</span></div>
+        <div class="flex gap-3"><span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Conectado</span><span v-if="activeLogsCount" class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span> {{ activeLogsCount }} serviço(s)</span><span v-if="!isFollowing && currentView === 'logs'" class="flex items-center gap-1 font-bold" :style="{ color: 'var(--status-warning)' }"><Pause class="w-2.5 h-2.5" /> LOG PAUSADO</span></div>
         <button @click="showAboutModal = true" class="flex items-center gap-1.5 hover:text-accent font-medium"><Info class="w-3 h-3" /><span>MaxInnov · v{{ appVersion }}</span></button>
       </footer>
     </main>

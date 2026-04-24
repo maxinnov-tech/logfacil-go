@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -22,12 +23,25 @@ import (
 
 // App struct
 type App struct {
+	ctx          context.Context
+	settings     *config.Settings
+	mgr          *config.Manager
+	lastIP       string                        // Rastreia o último IP para detectar mudanças
+	serviceFiles map[string]string             // Cache dos arquivos de log por serviço
+	watchers     map[string]*logFileWatcher    // Map de watchers ativos por caminho de arquivo
+	mu           sync.RWMutex                  // Protege serviceFiles e watchers
+}
+
+// logFileWatcher gerencia o monitoramento de um único arquivo de log.
+type logFileWatcher struct {
+	serviceName string
+	filePath    string
+	file        *os.File
+	lastSize    int64
+	mu          sync.Mutex    // Protege file e lastSize - apenas um goroutine lê por vez
 	ctx         context.Context
-	settings    *config.Settings
-	mgr         *config.Manager
-	lastOffsets map[string]int64
-	lastIP      string            // Rastreia o último IP para detectar mudanças
-	serviceFiles map[string]string // Cache dos arquivos de log por serviço
+	cancel      context.CancelFunc
+	app         *App
 }
 
 type ComponentStatus struct {
@@ -55,19 +69,25 @@ func NewApp() *App {
 	return &App{
 		settings:     settings,
 		mgr:          mgr,
-		lastOffsets:  make(map[string]int64),
 		serviceFiles: make(map[string]string),
+		watchers:     make(map[string]*logFileWatcher),
 	}
 }
 
 // startup é chamada quando o app inicia. Salva o context e inicia o loop de monitoramento.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	go a.monitorLogsLoop()
+
+	// Aguarda a UI registrar seus EventsOn handlers antes de emitir eventos
+	// Isso é crítico: sem este delay, logs emitidos na inicialização são perdidos
+	go func() {
+		time.Sleep(2 * time.Second)
+		a.monitorLogsLoop()
+	}()
 
 	if a.settings.AutoUpdate {
 		go func() {
-			time.Sleep(3 * time.Second) // aguarda um pouco para não travar o início
+			time.Sleep(5 * time.Second) // aguarda um pouco para não travar o início
 			res := a.CheckForUpdates()
 			if res.HasUpdate {
 				runtime.EventsEmit(ctx, "update-available", res)
@@ -76,23 +96,36 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
+func (a *App) shutdown(ctx context.Context) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, w := range a.watchers {
+		w.cancel()
+		w.closeFile()
+	}
+	fmt.Println("[INFO] App encerrado, todos os watchers parados.")
+}
+
 func (a *App) monitorLogsLoop() {
-	// Intervalo do ticker de PDVs: 5 segundos (SCAN_INTERVAL_SEC do Python)
 	tickerPDVs := time.NewTicker(5 * time.Second)
-	tickerScan := time.NewTicker(1500 * time.Millisecond) // SCAN_INTERVAL_SEC do Python (1.5s)
-	tickerTail := time.NewTicker(250 * time.Millisecond)  // TAIL_POLL_INTERVAL_SEC do Python (0.25s)
+	tickerRefresh := time.NewTicker(1500 * time.Millisecond)
 	tickerIP := time.NewTicker(60 * time.Second)
 	
 	defer tickerPDVs.Stop()
-	defer tickerScan.Stop()
-	defer tickerTail.Stop()
+	defer tickerRefresh.Stop()
 	defer tickerIP.Stop()
 
-	// Executa uma carga inicial imediata (para não esperar o primeiro intervalo de 1.5s)
-	a.refreshServiceFiles()
-	a.tailAllServiceLogs()
+	// ACELERAÇÃO INICIAL: refresh a cada 500ms nos primeiros 10 segundos
+	tickerRefresh.Reset(500 * time.Millisecond)
+	go func() {
+		time.Sleep(10 * time.Second)
+		tickerRefresh.Reset(1500 * time.Millisecond)
+		fmt.Println("[INFO] Warm-up completo, alternando para refresh normal (1.5s).")
+	}()
 
-	var scanning bool
+	// Carga inicial
+	a.refreshServiceFiles()
+
 	for {
 		select {
 		case <-a.ctx.Done():
@@ -102,19 +135,8 @@ func (a *App) monitorLogsLoop() {
 			if err == nil {
 				runtime.EventsEmit(a.ctx, "logs-updated", res)
 			}
-		case <-tickerScan.C:
-			// Busca novos arquivos ou rotações a cada 1.5s (Igual ao Python)
-			// Otimização: evita que buscas lentas se acumulem
-			if !scanning {
-				scanning = true
-				go func() {
-					a.refreshServiceFiles()
-					scanning = false
-				}()
-			}
-		case <-tickerTail.C:
-			// Lê novos conteúdos a cada 250ms
-			a.tailAllServiceLogs()
+		case <-tickerRefresh.C:
+			a.refreshServiceFiles()
 		case <-tickerIP.C:
 			currentIP := a.GetIP()
 			if currentIP != a.lastIP {
@@ -125,78 +147,210 @@ func (a *App) monitorLogsLoop() {
 	}
 }
 
+func (a *App) startWatching(serviceName, filePath string) {
+	ctx, cancel := context.WithCancel(a.appContext())
+	w := &logFileWatcher{
+		serviceName: serviceName,
+		filePath:    filePath,
+		ctx:         ctx,
+		cancel:      cancel,
+		app:         a,
+	}
+	
+	a.watchers[filePath] = w
+	
+	// A tailLoop já chama tailOnce() imediatamente ao iniciar - NÃO chamar aqui
+	// para evitar race condition com dois goroutines lendo o mesmo arquivo.
+	go w.tailLoop()
+}
+
+// Helper para obter o context do app (evita pânico se ctx ainda for nulo)
+func (a *App) appContext() context.Context {
+	if a.ctx != nil {
+		return a.ctx
+	}
+	return context.Background()
+}
+
 func (a *App) refreshServiceFiles() {
+	start := time.Now()
 	rootPath := a.settings.LastFolder
 	if rootPath == "" {
 		rootPath = config.DefaultRoot
 	}
-	// Busca arquivos mais recentes. Otimizado para não ser recursivo.
-	a.serviceFiles = parser.ScanLatestServiceLogs(rootPath)
+	newMap := parser.ScanLatestServiceLogs(rootPath)
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// 1. Detecta novos arquivos ou mudanças de caminho
+	for svc, newPath := range newMap {
+		oldPath, exists := a.serviceFiles[svc]
+		if !exists || oldPath != newPath {
+			// Se já tinha um watcher no caminho antigo, cancela ele
+			if oldPath != "" {
+				if w, ok := a.watchers[oldPath]; ok {
+					w.cancel()
+					w.closeFile()
+					delete(a.watchers, oldPath)
+				}
+			}
+			// Inicia novo watcher
+			a.startWatching(svc, newPath)
+			a.serviceFiles[svc] = newPath
+		}
+	}
+
+	// 2. Remove watchers de arquivos que não existem mais na descoberta
+	for path, w := range a.watchers {
+		found := false
+		for _, p := range newMap {
+			if p == path {
+				found = true
+				break
+			}
+		}
+		if !found {
+			w.cancel()
+			w.closeFile()
+			delete(a.watchers, path)
+			// Limpa de serviceFiles também
+			for s, p := range a.serviceFiles {
+				if p == path {
+					delete(a.serviceFiles, s)
+					break
+				}
+			}
+		}
+	}
+	fmt.Printf("[PERF] Discovery de arquivos levou %v\n", time.Since(start))
 }
 
-func (a *App) tailAllServiceLogs() {
-	// Se ainda não temos arquivos (primeiro boot), força um refresh
-	if len(a.serviceFiles) == 0 {
-		a.refreshServiceFiles()
-	}
+// ─────────────────────────────────────────────────────────────────────────────
+// LÓGICA DE WATCHER (BASEADA NO PYTHON)
+// ─────────────────────────────────────────────────────────────────────────────
 
-	for svc, path := range a.serviceFiles {
-		a.tailFile(svc, path)
+func (w *logFileWatcher) tailLoop() {
+	// Primeira leitura imediata ao iniciar o loop (ignora o primeiro tick do ticker)
+	w.tailOnce()
+
+	// Intervalo de leitura idêntico ao Python (250ms)
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-w.ctx.Done():
+			w.closeFile()
+			return
+		case <-ticker.C:
+			w.tailOnce()
+		}
 	}
 }
 
-func (a *App) tailFile(serviceName, path string) {
-	// Otimização: Apenas abre o arquivo se o tamanho mudou
-	info, err := os.Stat(path)
-	if err != nil {
-		return
-	}
+func (w *logFileWatcher) tailOnce() {
+	// Garante que apenas um goroutine lê este arquivo por vez
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-	lastOffset, exists := a.lastOffsets[path]
-	if exists && info.Size() <= lastOffset {
-		// Nenhuma novidade no arquivo
-		return
-	}
+	// 1. Abrir ou reabrir se necessário
+	if w.file == nil {
+		f, err := os.Open(w.filePath)
+		if err != nil {
+			return
+		}
+		info, err := f.Stat()
+		if err != nil {
+			f.Close()
+			return
+		}
 
-	file, err := os.Open(path)
-	if err != nil {
-		fmt.Printf("[ERRO] Falha ao abrir log do serviço %s (%s): %v\n", serviceName, path, err)
-		return
-	}
-	defer file.Close()
+		// Determina o ponto de partida da leitura
+		var start int64
+		maxStart := int64(config.MaxStartBytes) // 128KB padrão
 
-	// Se for um arquivo novo ou encolheu (log rotacionado)
-	// BareTail effect: posiciona MAX_START_BYTES antes do fim para mostrar histórico recente
-	if !exists || info.Size() < lastOffset {
-		start := info.Size() - int64(config.MaxStartBytes)
+		// Se o arquivo é antigo (não modificado há mais de 1h), 
+		// aumentamos o buffer inicial para 1MB para garantir que o usuário veja contexto.
+		if time.Since(info.ModTime()) > time.Hour {
+			maxStart = 1024 * 1024 // 1MB
+			fmt.Printf("[INFO] Log antigo detectado (%s). Aumentando buffer inicial para 1MB.\n", w.serviceName)
+		}
+
+		start = info.Size() - maxStart
 		if start < 0 {
 			start = 0
 		}
-		lastOffset = start
-		a.lastOffsets[path] = start
+		
+		_, _ = f.Seek(start, 0)
+		w.file = f
+		w.lastSize = start 
 	}
 
-	if info.Size() > lastOffset {
-		_, err := file.Seek(lastOffset, 0)
-		if err != nil {
+	// 2. Verificar rotação ou mudanças (usando a mesma lógica do Python)
+	info, err := w.file.Stat()
+	if err != nil {
+		w.closeFile()
+		return
+	}
+
+	currentSize := info.Size()
+
+	// Se o arquivo encolheu -> ROTACIONOU
+	if currentSize < w.lastSize {
+		fmt.Printf("[INFO] Rotação detectada para %s: %s\n", w.serviceName, w.filePath)
+		w.closeFile()
+		return
+	}
+
+	// 3. Ler novos bytes em loop para não lagar em arquivos grandes (Draine)
+	for {
+		toRead := currentSize - w.lastSize
+		if toRead <= 0 {
+			break
+		}
+
+		if toRead > 1024*1024 { // Cap de 1MB por iteração
+			toRead = 1024 * 1024
+		}
+
+		buf := make([]byte, toRead)
+		n, err := w.file.Read(buf)
+		if err != nil && err != io.EOF {
+			w.closeFile()
 			return
 		}
 
-		content := make([]byte, info.Size()-lastOffset)
-		_, err = file.Read(content)
-		if err != nil {
-			return
+		if n > 0 {
+			w.lastSize += int64(n)
+			content := parser.DecodeToUTF8(buf[:n])
+
+			// Emite para a UI
+			runtime.EventsEmit(w.app.ctx, "service-log-append", parser.ServiceLogUpdate{
+				Service: w.serviceName,
+				Content: content,
+			})
 		}
 
-		a.lastOffsets[path] = info.Size()
+		if n < int(toRead) {
+			break
+		}
 
-		// Decodifica encoding automaticamente: cp1252 → latin-1 → utf-8
-		// Replica ENCODINGS = ("cp1252", "latin-1", "utf-8") do Python (core/config.py)
-		runtime.EventsEmit(a.ctx, "service-log-append", parser.ServiceLogUpdate{
-			Service: serviceName,
-			Content: parser.DecodeToUTF8(content),
-		})
+		// Atualiza currentSize para a próxima iteração do loop
+		info, err = w.file.Stat()
+		if err != nil {
+			break
+		}
+		currentSize = info.Size()
 	}
+}
+
+func (w *logFileWatcher) closeFile() {
+	if w.file != nil {
+		w.file.Close()
+		w.file = nil
+	}
+	w.lastSize = 0
 }
 
 // =============================================================================
@@ -214,10 +368,19 @@ func (a *App) GetLogMarkers() []config.LogMarker {
 func (a *App) SaveSettings(s config.Settings) error {
 	oldFolder := a.settings.LastFolder
 	a.settings = &s
-	// Reseta offsets se a pasta raiz mudou (relê os logs da nova pasta)
+	
+	// Reseta se a pasta raiz mudou
 	if oldFolder != s.LastFolder {
-		a.lastOffsets = make(map[string]int64)
+		a.mu.Lock()
+		for _, w := range a.watchers {
+			w.cancel()
+			w.closeFile()
+		}
+		a.watchers = make(map[string]*logFileWatcher)
+		a.serviceFiles = make(map[string]string)
+		a.mu.Unlock()
 	}
+	
 	return a.mgr.Save(a.settings)
 }
 
@@ -235,8 +398,15 @@ func (a *App) ChooseFolder() (string, error) {
 	if folder != "" {
 		a.settings.LastFolder = folder
 		_ = a.mgr.Save(a.settings)
-		// Reseta os offsets para que o tail releia os logs da nova pasta
-		a.lastOffsets = make(map[string]int64)
+		// Reseta para a nova pasta
+		a.mu.Lock()
+		for _, w := range a.watchers {
+			w.cancel()
+			w.closeFile()
+		}
+		a.watchers = make(map[string]*logFileWatcher)
+		a.serviceFiles = make(map[string]string)
+		a.mu.Unlock()
 	}
 	return folder, nil
 }

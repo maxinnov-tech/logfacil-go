@@ -337,6 +337,7 @@ func IdentificarTodosPDVsPorLog(pastaLog string) ([]PDVInfo, string) {
 
 // EncontrarUltimoLog procura o arquivo de log mais recente para identificação de PDVs.
 // Tenta primeiro webPostoPayServer (padrão), depois busca em toda a raiz se não encontrar.
+// Agora otimizado para evitar varredura recursiva total na raiz.
 func EncontrarUltimoLog(pastaLog string) (string, error) {
 	scanRoot := ResolveLogRoot(pastaLog)
 	alvo := filepath.Join(scanRoot, "webPostoPayServer")
@@ -347,9 +348,9 @@ func EncontrarUltimoLog(pastaLog string) (string, error) {
 		return latest, nil
 	}
 
-	// Se não achou no webPostoPayServer, faz uma busca geral (fallback)
-	// Isso ajuda se o usuário tiver uma estrutura de pastas diferente
-	return findLatestLogFile(scanRoot)
+	// Se não achou no webPostoPayServer, busca apenas na raiz (sem entrar em subpastas de outros serviços)
+	// Isso evita percorrer milhares de arquivos de outros logs desnecessariamente.
+	return findLatestLogFileNonRecursive(scanRoot)
 }
 
 // ScanLatestServiceLogs percorre as subpastas em root e retorna mapa [NomeServico]CaminhoArquivo mais recente.
@@ -381,6 +382,12 @@ func ScanLatestServiceLogs(root string) map[string]string {
 					mu.Unlock()
 				}
 			}(e.Name())
+		} else if hasLogExtension(e.Name()) {
+			// Arquivos de log diretamente na raiz também são monitorados
+			// como serviços individuais (ex: ROOT_webPostoPay.log)
+			mu.Lock()
+			result["ROOT_"+e.Name()] = filepath.Join(scanRoot, e.Name())
+			mu.Unlock()
 		}
 	}
 
@@ -390,21 +397,45 @@ func ScanLatestServiceLogs(root string) map[string]string {
 
 
 
-// findLatestLogFile encontra o arquivo de log mais recente em uma pasta (recursivo).
-// Otimizado com WalkDir para alta performance no Windows.
+// findLatestLogFile encontra o arquivo de log mais recente em uma pasta.
+// Otimizado: tenta primeiro apenas a pasta base (não recursivo) para ser extremamente rápido.
+// Se não encontrar nada, aí sim faz uma busca recursiva limitada.
+// findLatestLogFile encontra o arquivo de log mais recente em uma pasta e subpastas.
+// Sem limite de profundidade, ignorando pastas irrelevantes.
 func findLatestLogFile(dir string) (string, error) {
 	var latestFile string
 	var latestTime time.Time
 
+	// Pastas a ignorar (nomes em minúsculo para comparação)
+	ignoreDirs := map[string]bool{
+		"backup":    true,
+		"old":       true,
+		"temp":      true,
+		"tmp":       true,
+		"cache":     true,
+		"archive":   true,
+		"historico": true,
+	}
+
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
+			return nil // Ignora erros de permissão ou pastas inacessíveis
+		}
+
+		if d.IsDir() {
+			name := strings.ToLower(d.Name())
+			if ignoreDirs[name] {
+				return filepath.SkipDir
+			}
 			return nil
 		}
-		if !d.IsDir() && hasLogExtension(d.Name()) {
+		
+		if hasLogExtension(d.Name()) {
 			info, err := d.Info()
 			if err == nil {
-				if info.ModTime().After(latestTime) {
-					latestTime = info.ModTime()
+				modTime := info.ModTime()
+				if modTime.After(latestTime) {
+					latestTime = modTime
 					latestFile = path
 				}
 			}
@@ -413,6 +444,30 @@ func findLatestLogFile(dir string) (string, error) {
 	})
 
 	return latestFile, err
+}
+
+// findLatestLogFileNonRecursive busca apenas na pasta imediata (muito rápido).
+func findLatestLogFileNonRecursive(dir string) (string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+
+	var latestFile string
+	var latestTime time.Time
+
+	for _, e := range entries {
+		if !e.IsDir() && hasLogExtension(e.Name()) {
+			info, err := e.Info()
+			if err == nil {
+				if info.ModTime().After(latestTime) {
+					latestTime = info.ModTime()
+					latestFile = filepath.Join(dir, e.Name())
+				}
+			}
+		}
+	}
+	return latestFile, nil
 }
 
 
