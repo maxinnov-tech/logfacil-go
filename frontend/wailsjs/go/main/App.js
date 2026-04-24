@@ -22,6 +22,10 @@ export function ExportPDVsCSV(arg1) {
   return window['go']['main']['App']['ExportPDVsCSV'](arg1);
 }
 
+export function FrontendReady() {
+  return window['go']['main']['App']['FrontendReady']();
+}
+
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }

@@ -11,7 +11,7 @@ import {
   GetSettings, SaveSettings, IsAdmin, RestartAsAdmin,
   GetPDVsFromLog, GetServiceStatuses, RestartComponent,
   GetExportFolders, ExportLogs, ChooseFolder, ExportPDVsCSV, GetIP, GetLogMarkers,
-  CheckForUpdates, DownloadAndInstallUpdate, GetAppVersion 
+  CheckForUpdates, DownloadAndInstallUpdate, GetAppVersion, FrontendReady
 } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 
@@ -320,19 +320,21 @@ function addLines(svc, lines) {
     serviceLogs.value[svc] = []
     if (!activeLogTab.value) activeLogTab.value = svc
   }
-  
+
   // Atualiza contador de erros antes de adicionar (apenas para as novas)
   const newErrors = checkErrorInLines(lines)
   criticalAlerts.value += newErrors
 
-  serviceLogs.value[svc].push(...lines)
-  
-  if (serviceLogs.value[svc].length > max) {
-    const evicted = serviceLogs.value[svc].slice(0, serviceLogs.value[svc].length - max)
-    // Decrementa erros das linhas que saíram do buffer
+  // Usa concat em vez de push(...lines) para evitar stack overflow
+  // com arrays grandes (ex: 10k linhas de log antigo)
+  const combined = serviceLogs.value[svc].concat(lines)
+  if (combined.length > max) {
+    const evicted = combined.slice(0, combined.length - max)
     const evictedErrors = checkErrorInLines(evicted)
     criticalAlerts.value = Math.max(0, criticalAlerts.value - evictedErrors)
-    serviceLogs.value[svc] = serviceLogs.value[svc].slice(-max)
+    serviceLogs.value[svc] = combined.slice(-max)
+  } else {
+    serviceLogs.value[svc] = combined
   }
 }
 
@@ -494,8 +496,8 @@ onMounted(() => {
     for (const [svc, lines] of Object.entries(pendingLines)) {
       if (!lines.length) continue
       if (!isFollowing.value) {
-        if (!pausedLines.value[svc]) pausedLines.value[svc] = []
-        pausedLines.value[svc].push(...lines)
+        // Usa concat para evitar stack overflow com arrays grandes
+        pausedLines.value[svc] = (pausedLines.value[svc] || []).concat(lines)
       } else {
         addLines(svc, lines)
         if (activeLogTab.value === svc) { scrollToBottom(); nextTick(updateMetrics) }
@@ -510,7 +512,8 @@ onMounted(() => {
     if (!lines.length) return
     // Acumula no buffer temporário (sem toque na UI)
     if (!pendingLines[update.service]) pendingLines[update.service] = []
-    pendingLines[update.service].push(...lines)
+    // Usa concat para evitar stack overflow com chunks de 1MB
+    pendingLines[update.service] = pendingLines[update.service].concat(lines)
   })
 
   EventsOn('ip-updated', ip => { if (ip) localIP.value = ip })
@@ -521,8 +524,12 @@ onMounted(() => {
     else updateBytesStr.value = `${(prog.downloaded / 1024).toFixed(1)} / ${(prog.total / 1024).toFixed(1)} KB`
   })
 
-  // Carrega dados iniciais DEPOIS de registrar os listeners
+  // Carrega dados iniciais
   loadInitialData()
+
+  // Sinaliza ao backend Go que o frontend está pronto para receber eventos.
+  // O backend estava esperando este sinal para iniciar o monitoramento.
+  FrontendReady()
 })
 
 onUnmounted(() => {
@@ -731,10 +738,16 @@ onUnmounted(() => {
               </transition>
               <div v-if="activeLogTab" class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-white/5 flex-shrink-0">
                 <div class="flex items-center gap-2">
-                  <button @click="toggleFollow" :class="['px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border', isFollowing ? 'bg-blue-600 text-white border-blue-500' : '']" :style="!isFollowing ? { backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', borderColor: 'var(--status-warning)' } : {}">
-                    {{ isFollowing ? 'Seguindo — F2' : 'Pausado — F2' }}<span v-if="!isFollowing && unreadCount > 0" class="px-1 py-0.5 rounded" :style="{ backgroundColor: 'var(--status-warning-bg)', filter: 'brightness(0.95)' }">+{{ unreadCount }}</span>
+                  <!-- Botão Seguir/Pausar: azul quando seguindo, VERMELHO quando pausado -->
+                  <button @click="toggleFollow" :class="['px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border transition-all', isFollowing ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-700' : 'bg-red-600 text-white border-red-500 hover:bg-red-700']"
+                    :title="isFollowing ? 'Pausar rolagem automática (F2)' : 'Retomar rolagem automática (F2)'">
+                    {{ isFollowing ? 'Seguindo — F2' : 'Pausado — F2' }}<span v-if="!isFollowing && unreadCount > 0" class="px-1 py-0.5 rounded bg-red-500/30">+{{ unreadCount }}</span>
                   </button>
-                  <button @click="handleRestartComponent(activeLogTab)" :disabled="loading || !isAdmin" class="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] flex items-center gap-1.5 disabled:opacity-40"><RefreshCw class="w-3 h-3" /> Reiniciar <span class="font-mono">{{ activeLogTab }}</span></button>
+                  <!-- Botão Reiniciar: desabilitado sem Admin, com tooltip explicativo -->
+                  <button @click="handleRestartComponent(activeLogTab)" :disabled="loading || !isAdmin"
+                    :title="!isAdmin ? '⚠️ Habilite o Modo Administrador para reiniciar serviços (clique em Reiniciar como Admin na barra lateral)' : 'Reiniciar o serviço ' + activeLogTab"
+                    :class="['px-3 py-1.5 border rounded-lg text-[10px] flex items-center gap-1.5 transition-all', !isAdmin ? 'bg-white/5 border-white/10 opacity-50 cursor-not-allowed' : 'bg-white/5 border-white/10 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400']"
+                  ><RefreshCw class="w-3 h-3" /> Reiniciar <span class="font-mono">{{ activeLogTab }}</span></button>
                 </div>
                 <button @click="clearLogTab(activeLogTab)" class="flex items-center gap-1 text-[10px] text-slate-500 hover:text-rose-400"><Trash2 class="w-3 h-3" /> Limpar</button>
               </div>
@@ -752,7 +765,9 @@ onUnmounted(() => {
                   <div class="flex-1 space-y-1 mb-3">
                     <div v-for="svc in (comp.services || [])" :key="svc.name" class="flex items-center justify-between text-[10px] py-1 border-b border-theme last:border-0"><span class="text-secondary font-mono truncate mr-2">{{ svc.name }}</span><span :class="['font-bold text-[9px] uppercase', svc.running ? 'text-green-500' : 'text-rose-500']">{{ svc.running ? 'Running' : 'Stopped' }}</span></div>
                   </div>
-                  <button @click="handleRestartComponent(comp.name)" :disabled="loading || !isAdmin" class="w-full py-2 bg-accent text-white rounded-lg text-[10px] font-bold">REINICIAR STACK</button>
+                  <button @click="handleRestartComponent(comp.name)" :disabled="loading || !isAdmin"
+                    :title="!isAdmin ? '⚠️ Habilite o Modo Administrador para reiniciar serviços' : 'Reiniciar stack ' + comp.name"
+                    :class="['w-full py-2 text-white rounded-lg text-[10px] font-bold transition-all', !isAdmin ? 'bg-accent opacity-50 cursor-not-allowed' : 'bg-accent hover:bg-accent/80']">REINICIAR STACK</button>
                 </div>
               </div>
             </div>

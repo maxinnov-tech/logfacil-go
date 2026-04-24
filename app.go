@@ -30,6 +30,7 @@ type App struct {
 	serviceFiles map[string]string             // Cache dos arquivos de log por serviço
 	watchers     map[string]*logFileWatcher    // Map de watchers ativos por caminho de arquivo
 	mu           sync.RWMutex                  // Protege serviceFiles e watchers
+	startCh      chan struct{}                  // Sinaliza que o frontend está pronto
 }
 
 // logFileWatcher gerencia o monitoramento de um único arquivo de log.
@@ -71,6 +72,19 @@ func NewApp() *App {
 		mgr:          mgr,
 		serviceFiles: make(map[string]string),
 		watchers:     make(map[string]*logFileWatcher),
+		startCh:      make(chan struct{}),
+	}
+}
+
+// FrontendReady é chamado pelo Vue quando todos os EventsOn estão registrados.
+// Isso garante que o backend só emite eventos depois que a UI está pronta para receber.
+func (a *App) FrontendReady() {
+	select {
+	case <-a.startCh:
+		// canal já fechado, nada a fazer
+	default:
+		close(a.startCh)
+		fmt.Println("[INFO] Frontend pronto - iniciando monitoramento de logs.")
 	}
 }
 
@@ -78,16 +92,24 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// Aguarda a UI registrar seus EventsOn handlers antes de emitir eventos
-	// Isso é crítico: sem este delay, logs emitidos na inicialização são perdidos
+	// Abre a janela maximizada ao iniciar
+	runtime.WindowMaximise(ctx)
+
+	// Aguarda o frontend sinalizar que está pronto (via FrontendReady())
+	// com timeout de 8 segundos como fallback de segurança
 	go func() {
-		time.Sleep(2 * time.Second)
+		select {
+		case <-a.startCh:
+			// Frontend confirmou prontidão
+		case <-time.After(8 * time.Second):
+			fmt.Println("[WARN] FrontendReady não chamado em 8s, iniciando de qualquer forma")
+		}
 		a.monitorLogsLoop()
 	}()
 
 	if a.settings.AutoUpdate {
 		go func() {
-			time.Sleep(5 * time.Second) // aguarda um pouco para não travar o início
+			time.Sleep(5 * time.Second)
 			res := a.CheckForUpdates()
 			if res.HasUpdate {
 				runtime.EventsEmit(ctx, "update-available", res)
