@@ -30,8 +30,8 @@
   --card-bg: #ffffff;
   --card-hover: #f1f5f9;
   --text-primary: #0f172a; /* slate-900 */
-  --text-secondary: #475569; /* slate-600 */
-  --text-muted: #94a3b8; /* slate-400 */
+  --text-secondary: #334155; /* slate-700 */
+  --text-muted: #64748b; /* slate-500 */
   --border-color: rgba(0, 0, 0, 0.1);
   --border-muted: rgba(0, 0, 0, 0.05);
   --accent-color: #2563eb; /* blue-600 */

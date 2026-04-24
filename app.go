@@ -26,7 +26,8 @@ type App struct {
 	settings    *config.Settings
 	mgr         *config.Manager
 	lastOffsets map[string]int64
-	lastIP      string // Rastreia o último IP para detectar mudanças
+	lastIP      string            // Rastreia o último IP para detectar mudanças
+	serviceFiles map[string]string // Cache dos arquivos de log por serviço
 }
 
 type ComponentStatus struct {
@@ -52,9 +53,10 @@ func NewApp() *App {
 	mgr := config.NewManager()
 	settings, _ := mgr.Load()
 	return &App{
-		settings:    settings,
-		mgr:         mgr,
-		lastOffsets: make(map[string]int64),
+		settings:     settings,
+		mgr:          mgr,
+		lastOffsets:  make(map[string]int64),
+		serviceFiles: make(map[string]string),
 	}
 }
 
@@ -76,26 +78,42 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) monitorLogsLoop() {
 	// Intervalo do ticker de PDVs: 5 segundos (SCAN_INTERVAL_SEC do Python)
-	tickerLogs := time.NewTicker(5 * time.Second)
-	// Intervalo do tail: 200ms (TAIL_POLL_INTERVAL_SEC ≈ 0.25s → arredondado para 200ms)
-	tickerTail := time.NewTicker(200 * time.Millisecond)
-	// Intervalo de verificação de IP: 60 segundos conforme solicitado pelo usuário
+	tickerPDVs := time.NewTicker(5 * time.Second)
+	tickerScan := time.NewTicker(1500 * time.Millisecond) // SCAN_INTERVAL_SEC do Python (1.5s)
+	tickerTail := time.NewTicker(250 * time.Millisecond)  // TAIL_POLL_INTERVAL_SEC do Python (0.25s)
 	tickerIP := time.NewTicker(60 * time.Second)
 	
-	defer tickerLogs.Stop()
+	defer tickerPDVs.Stop()
+	defer tickerScan.Stop()
 	defer tickerTail.Stop()
 	defer tickerIP.Stop()
 
+	// Executa uma carga inicial imediata (para não esperar o primeiro intervalo de 1.5s)
+	a.refreshServiceFiles()
+	a.tailAllServiceLogs()
+
+	var scanning bool
 	for {
 		select {
 		case <-a.ctx.Done():
 			return
-		case <-tickerLogs.C:
+		case <-tickerPDVs.C:
 			res, err := a.GetPDVsFromLog()
 			if err == nil {
 				runtime.EventsEmit(a.ctx, "logs-updated", res)
 			}
+		case <-tickerScan.C:
+			// Busca novos arquivos ou rotações a cada 1.5s (Igual ao Python)
+			// Otimização: evita que buscas lentas se acumulem
+			if !scanning {
+				scanning = true
+				go func() {
+					a.refreshServiceFiles()
+					scanning = false
+				}()
+			}
 		case <-tickerTail.C:
+			// Lê novos conteúdos a cada 250ms
 			a.tailAllServiceLogs()
 		case <-tickerIP.C:
 			currentIP := a.GetIP()
@@ -107,31 +125,45 @@ func (a *App) monitorLogsLoop() {
 	}
 }
 
-func (a *App) tailAllServiceLogs() {
+func (a *App) refreshServiceFiles() {
 	rootPath := a.settings.LastFolder
 	if rootPath == "" {
 		rootPath = config.DefaultRoot
 	}
+	// Busca arquivos mais recentes. Otimizado para não ser recursivo.
+	a.serviceFiles = parser.ScanLatestServiceLogs(rootPath)
+}
 
-	serviceFiles := parser.ScanLatestServiceLogs(rootPath)
-	for svc, path := range serviceFiles {
+func (a *App) tailAllServiceLogs() {
+	// Se ainda não temos arquivos (primeiro boot), força um refresh
+	if len(a.serviceFiles) == 0 {
+		a.refreshServiceFiles()
+	}
+
+	for svc, path := range a.serviceFiles {
 		a.tailFile(svc, path)
 	}
 }
 
 func (a *App) tailFile(serviceName, path string) {
-	file, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	info, err := file.Stat()
+	// Otimização: Apenas abre o arquivo se o tamanho mudou
+	info, err := os.Stat(path)
 	if err != nil {
 		return
 	}
 
 	lastOffset, exists := a.lastOffsets[path]
+	if exists && info.Size() <= lastOffset {
+		// Nenhuma novidade no arquivo
+		return
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Printf("[ERRO] Falha ao abrir log do serviço %s (%s): %v\n", serviceName, path, err)
+		return
+	}
+	defer file.Close()
 
 	// Se for um arquivo novo ou encolheu (log rotacionado)
 	// BareTail effect: posiciona MAX_START_BYTES antes do fim para mostrar histórico recente
@@ -227,6 +259,10 @@ func (a *App) RestartAsAdmin() error {
 		os.Exit(0) // Fecha a instância atual após disparar a nova
 	}
 	return err
+}
+
+func (a *App) GetAppVersion() string {
+	return config.Version
 }
 
 // =============================================================================

@@ -15,6 +15,8 @@ export function ExportLogs(arg1:Array<string>,arg2:string,arg3:string,arg4:strin
 
 export function ExportPDVsCSV(arg1:Array<parser.PDVInfo>):Promise<boolean|string>;
 
+export function GetAppVersion():Promise<string>;
+
 export function GetExportFolders():Promise<Array<string>>;
 
 export function GetIP():Promise<string>;
